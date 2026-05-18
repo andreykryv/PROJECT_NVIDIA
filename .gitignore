@@ -2,27 +2,24 @@
 # Compiled and build artifacts
 *.o
 *.obj
-*.exe
-*.dll
-*.so
-*.a
 *.out
 build/
 dist/
 
 # Dependencies
+node_modules/
 venv/
 .venv/
-node_modules/
 __pycache__/
-*.egg-info/
-.Python
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
 
 # Environment
 .env
@@ -32,10 +29,8 @@ __pycache__/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
 
@@ -44,24 +39,27 @@ coverage/
 htmlcov/
 .coverage
 
-# Python specific
-*.pyc
-*.pyo
-*.pyd
-.Python
-__pycache__/
-*.so
-.PyCharmCache/
-.mypy_cache/
-.pytest_cache/
-.tox/
-
-# Build systems
-target/
-.gradle/
-cmake_build/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.manifest
-Makefile
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
