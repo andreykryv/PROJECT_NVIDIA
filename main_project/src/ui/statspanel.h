@@ -1,40 +1,67 @@
-////////////////////////////////////////////////////////////////////////////////
-// ui/statspanel.h — заголовок панели статистики
-//
-// НАЗНАЧЕНИЕ:
-//   StatsPanel показывает подробную статистику последнего и всех
-//   накопленных тестов: времена, ускорение GPU, загрузку памяти.
-//
-// КЛАСС: StatsPanel : public QWidget
-//
-//   СЕКЦИИ:
-//
-//   "Последний результат":
-//     — QLabel: "CPU время: X.XXX мс"
-//     — QLabel: "GPU время: X.XXX мс"  (включает transfer)
-//     — QLabel: "GPU kernel: X.XXX мс" (только вычисление)
-//     — QLabel: "Передача H→D: X.XXX мс"
-//     — QLabel: "Передача D→H: X.XXX мс"
-//     — QLabel: "Ускорение GPU: X.XXXx" (цвет: зелёный если > 1, красный если < 1)
-//     — QLabel: "Алгоритм: ..."
-//     — QLabel: "Размер массива: N элементов (X МБ)"
-//
-//   "Память GPU":
-//     — QProgressBar: использованная VRAM / доступная VRAM
-//     — QLabel: "Использовано: X МБ / Y МБ"
-//     — QLabel: "Устройство: NVIDIA GeForce RTX XXXX"
-//
-//   "История" (скроллируемый список последних N результатов):
-//     — QListWidget с элементами формата: "QS CPU 12.3мс vs Bitonic GPU 2.1мс (5.9x)"
-//     — Двойной клик на элементе загружает детали в секцию "Последний результат".
-//
-//   СЛОТЫ:
-//     updateResult(BenchmarkResult)     — обновить "Последний результат"
-//     updateGPUMemory(size_t used, size_t total) — обновить секцию памяти
-//     clearHistory()                    — очистить историю
-//
-//   МЕТОДЫ:
-//     formatTime(double ms) const       — "1.234 мс" или "1234.5 мкс" или "12.3 с"
-//     formatBytes(size_t bytes) const   — "123 КБ" / "45.6 МБ" / "1.23 ГБ"
-//     formatSpeedup(double x) const     — "5.43x" с цветовым кодированием
-////////////////////////////////////////////////////////////////////////////////
+#ifndef STATSPANEL_H
+#define STATSPANEL_H
+
+#include <QWidget>
+#include <QLabel>
+#include <QProgressBar>
+#include <QListWidget>
+#include <QGroupBox>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include "core/benchmarkresult.h"
+
+namespace SortBench {
+
+class StatsPanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit StatsPanel(QWidget *parent = nullptr);
+    ~StatsPanel() override = default;
+
+    // Методы форматирования
+    QString formatTime(double ms) const;
+    QString formatBytes(size_t bytes) const;
+    QString formatSpeedup(double x) const;
+
+public slots:
+    void updateResult(const BenchmarkResult &result);
+    void updateGPUMemory(size_t used, size_t total);
+    void clearHistory();
+
+signals:
+    void resultSelected(const BenchmarkResult &result);
+
+private:
+    void createUI();
+    void connectSignals();
+    QColor speedupColor(double x) const;
+
+    // Секция "Последний результат"
+    QGroupBox *m_lastResultGroup;
+    QLabel *m_cpuTimeLabel;
+    QLabel *m_gpuTimeLabel;
+    QLabel *m_gpuKernelLabel;
+    QLabel *m_gpuH2DLabel;
+    QLabel *m_gpuD2HLabel;
+    QLabel *m_speedupLabel;
+    QLabel *m_algorithmLabel;
+    QLabel *m_arraySizeLabel;
+
+    // Секция "Память GPU"
+    QGroupBox *m_gpuMemoryGroup;
+    QProgressBar *m_vramProgressBar;
+    QLabel *m_vramUsageLabel;
+    QLabel *m_deviceNameLabel;
+
+    // Секция "История"
+    QGroupBox *m_historyGroup;
+    QListWidget *m_historyList;
+
+    int m_maxHistory = 30;
+};
+
+} // namespace SortBench
+
+#endif // STATSPANEL_H

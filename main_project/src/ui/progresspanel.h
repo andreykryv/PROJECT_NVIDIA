@@ -1,36 +1,67 @@
-////////////////////////////////////////////////////////////////////////////////
-// ui/progresspanel.h — заголовок панели прогресса и статуса
-//
-// НАЗНАЧЕНИЕ:
-//   ProgressPanel отображает ход выполнения текущего теста: прогресс-бар,
-//   затраченное время, статус текущей фазы (генерация, сортировка, передача).
-//
-// КЛАСС: ProgressPanel : public QWidget
-//
-//   ЭЛЕМЕНТЫ:
-//     QProgressBar *progressBar          — прогресс 0–100% (CPU или GPU фаза)
-//     QLabel *phaseLabel                 — текущая фаза: "Генерация массива...",
-//                                          "CPU: Quick Sort", "GPU: Bitonic Sort",
-//                                          "Копирование H→D", "Копирование D→H"
-//     QLabel *elapsedLabel               — прошедшее время: "Elapsed: 1.234 s"
-//     QLabel *etaLabel                   — ожидаемое оставшееся время: "ETA: ~0.5 s"
-//     QLabel *speedLabel                 — "Скорость: 45.2M элем/с"
-//     QFrame *cpuGpuSplitBar             — кастомный виджет: горизонтальный бар,
-//                                          разделённый на синий (CPU) и зелёный (GPU)
-//                                          участки по соотношению времени. Помогает
-//                                          визуально сравнить доли времени.
-//     QElapsedTimer *elapsedTimer        — таймер для обновления elapsed каждые 100мс
-//     QTimer *updateTimer                — таймер обновления UI
-//
-//   СЛОТЫ:
-//     setProgress(int percent)           — обновить прогресс-бар
-//     setPhase(QString phase)            — обновить phaseLabel
-//     setBenchmarkStarted()              — сбросить таймер, запустить обновление
-//     setBenchmarkFinished(double cpuMs, double gpuMs) — показать итоговый сплит
-//     reset()                            — очистить все метки
-//
-//   ДОПОЛНИТЕЛЬНО:
-//     — cpuGpuSplitBar имеет кастомный paintEvent: рисует два прямоугольника
-//       с подписями "CPU: Xms" и "GPU: Yms" внутри соответствующих участков.
-//     — При наведении на сплит-бар показывает tooltip с процентным соотношением.
-////////////////////////////////////////////////////////////////////////////////
+#ifndef PROGRESSPANEL_H
+#define PROGRESSPANEL_H
+
+#include <QWidget>
+#include <QProgressBar>
+#include <QLabel>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QPainter>
+
+namespace SortBench {
+
+class CpuGpuSplitBar : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit CpuGpuSplitBar(QWidget *parent = nullptr);
+    void setCpuGpuTimes(double cpuMs, double gpuMs);
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
+private:
+    double m_cpuMs = 0.0;
+    double m_gpuMs = 0.0;
+};
+
+class ProgressPanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ProgressPanel(QWidget *parent = nullptr);
+    ~ProgressPanel() override = default;
+
+    void setArraySize(int size);
+
+public slots:
+    void setProgress(int percent);
+    void setPhase(const QString &phase);
+    void setBenchmarkStarted();
+    void setBenchmarkFinished(double cpuMs, double gpuMs);
+    void reset();
+
+private:
+    void createUI();
+    void updateElapsed();
+    QString formatSpeed(long long elementsPerSec) const;
+
+    QProgressBar *m_progressBar;
+    QLabel *m_phaseLabel;
+    QLabel *m_elapsedLabel;
+    QLabel *m_etaLabel;
+    QLabel *m_speedLabel;
+    CpuGpuSplitBar *m_cpuGpuSplitBar;
+
+    QElapsedTimer *m_elapsedTimer;
+    QTimer *m_updateTimer;
+    int m_arraySize = 100000;
+    double m_cpuMs = 0.0;
+    double m_gpuMs = 0.0;
+};
+
+} // namespace SortBench
+
+#endif // PROGRESSPANEL_H
