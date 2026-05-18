@@ -409,7 +409,7 @@ SortParams ControlPanel::buildParams() const {
    params.animationFPS = m_animSpeedSlider->value();
     params.showComparisons = m_showComparisonsCheck->isChecked();
     params.showAccessCount = m_showAccessCountCheck->isChecked();
-    params.colorScheme = static_cast<ColorScheme>(m_colorSchemeCombo->currentIndex());
+   params.colorScheme = static_cast<ColorSchemeType>(m_colorSchemeCombo->currentIndex());
     params.maxVisElements = m_maxVisElementsSpin->value();
     
     return params;

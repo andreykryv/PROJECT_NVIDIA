@@ -40,7 +40,7 @@ struct VisFrame {
 
 class SortBenchEngine : public QObject {
     Q_OBJECT
-    Q_ENUM(State)
+    
 
 public:
     enum class State {
@@ -55,6 +55,7 @@ public:
         Finished,
         Stopped
     };
+    Q_ENUM(State)
 
     explicit SortBenchEngine(QObject *parent = nullptr);
     ~SortBenchEngine();

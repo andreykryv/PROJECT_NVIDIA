@@ -11,15 +11,7 @@ namespace SortBench {
 // Используем HighlightType из sortbenchengine.h через forward declaration
 enum class HighlightType;
 
-struct VisFrame {
-    QVector<int> values;
-    QVector<QColor> colors;
-    int highlightedIndex = -1;
-    int highlightedIndex2 = -1;
-    long long comparisons = 0;
-    long long swaps = 0;
-    bool isSorted = false;
-};
+
 
 class ColorScheme;
 

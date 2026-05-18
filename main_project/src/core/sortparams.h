@@ -43,12 +43,8 @@ enum class Distribution {
     RandomNormal = 6 
 };
 
-enum class ColorScheme { 
-    Rainbow = 0, 
-    Heatmap = 1, 
-    Monochrome = 2, 
-    StatusColors = 3 
-};
+enum class ColorSchemeType { Rainbow = 0, Heatmap = 1, Monochrome = 2, StatusColors = 3 };
+
 
 struct SortParams {
     CpuAlgorithm cpuAlgorithm = CpuAlgorithm::QuickSort;
@@ -63,7 +59,7 @@ struct SortParams {
     int animationFPS = 60;
     bool showComparisons = true;
     bool showAccessCount = false;
-    ColorScheme colorScheme = ColorScheme::Rainbow;
+    ColorSchemeType colorScheme = ColorSchemeType::Rainbow;
     int maxVisElements = 1000;
     int repeatCount = 1;
     bool excludeOutliers = false;
@@ -120,13 +116,13 @@ inline QString toString(Distribution dist) {
     }
 }
 
-inline QString toString(ColorScheme cs) {
+inline QString toString(ColorSchemeType cs) {
     switch (cs) {
-        case ColorScheme::Rainbow: return "Радуга";
-        case ColorScheme::Heatmap: return "Тепловая карта";
-        case ColorScheme::Monochrome: return "Монохром";
-        case ColorScheme::StatusColors: return "Цвета статусов";
-        default: return "Неизвестная";
+        case ColorSchemeType::Rainbow:     return "Радуга";
+        case ColorSchemeType::Heatmap:     return "Тепловая карта";
+        case ColorSchemeType::Monochrome:  return "Монохром";
+        case ColorSchemeType::StatusColors:return "Цвета статусов";
+        default:                           return "Неизвестная";
     }
 }
 
