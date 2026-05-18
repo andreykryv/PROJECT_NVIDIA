@@ -1,79 +1,98 @@
-////////////////////////////////////////////////////////////////////////////////
-// ui/visualizationwidget.h — заголовок виджета анимации сортировки
-//
-// НАЗНАЧЕНИЕ:
-//   VisualizationWidget — центральный виджет для визуального отображения
-//   процесса сортировки в реальном времени. Рисует столбчатую диаграмму,
-//   где каждый столбец = один элемент массива, высота = значение элемента.
-//   Подсвечивает сравниваемые, переставляемые и уже отсортированные элементы.
-//
-// КЛАСС: VisualizationWidget : public QOpenGLWidget (или QWidget с QPainter)
-//
-//   РЕЖИМ РЕНДЕРИНГА:
-//     — Основной: QOpenGLWidget для аппаратного ускорения при большом числе
-//       столбцов (> 10 000). Использует OpenGL vertex buffers.
-//     — Fallback: QPainter на QPixmap при отсутствии OpenGL или < 1000 элементов.
-//       QPainter достаточно быстр и даёт лучшее качество субпиксельного
-//       рендеринга при малом числе столбцов.
-//     — Автоматическое переключение режима по количеству элементов.
-//
-//   СТРУКТУРА VisFrame (описание одного кадра анимации):
-//     std::vector<float>  values          — нормализованные значения [0..1]
-//     std::vector<int>    highlightedIdx  — индексы подсвеченных элементов
-//     HighlightType       highlightType   — COMPARE/SWAP/PIVOT/SORTED/WRITE
-//     int                 pivotIndex      — индекс опорного элемента (для QuickSort)
-//     int                 sortedBoundary  — граница уже отсортированной части
-//     long long           comparisons     — счётчик сравнений
-//     long long           swaps           — счётчик перестановок
-//     long long           arrayAccesses   — счётчик обращений к массиву
-//     QString             algoName        — имя текущего алгоритма
-//     bool                isGPU           — кадр от GPU-алгоритма?
-//
-//   ЧЛЕНЫ-ДАННЫЕ:
-//     VisFrame currentFrame              — текущий отображаемый кадр
-//     VisFrame nextFrame                 — следующий кадр (интерполяция)
-//     float interpolationT               — прогресс интерполяции [0..1]
-//     QTimer *animTimer                  — таймер перехода между кадрами
-//     ColorScheme *colorScheme           — текущая цветовая схема
-//     int animationSpeedFPS              — целевой FPS анимации
-//     bool isPaused                      — флаг паузы
-//     QQueue<VisFrame> frameQueue        — очередь кадров от алгоритма
-//     std::atomic<bool> isReceivingFrames — алгоритм ещё генерирует кадры?
-//     QLabel *overlayStatsLabel          — overlay-метки: сравнения, перестановки
-//     QPushButton *stepButton            — кнопка "Один шаг" в пошаговом режиме
-//     int maxColumns                     — макс. число столбцов на экране
-//     bool isStepMode                    — пошаговый режим (animSpeed == 0)
-//
-//   СЛОТЫ:
-//     renderFrame(VisFrame)              — добавляет кадр в очередь
-//     setAnimationSpeed(int fps)         — устанавливает целевой FPS
-//     pause()                            — ставит анимацию на паузу
-//     resume()                           — возобновляет анимацию
-//     reset()                            — очищает очередь и сбрасывает состояние
-//     setColorScheme(ColorScheme *)      — смена цветовой схемы без перезапуска
-//     stepForward()                      — один шаг в пошаговом режиме
-//
-//   МЕТОДЫ РЕНДЕРИНГА:
-//     paintEvent(QPaintEvent *)          — основной метод отрисовки (QPainter)
-//     initializeGL()                     — инициализация OpenGL (если QOpenGLWidget)
-//     paintGL()                          — отрисовка OpenGL-кадра
-//     drawBars(QPainter &, VisFrame &)   — отрисовка столбцов
-//     drawHighlights(QPainter &, VisFrame &) — цветные подсветки
-//     drawOverlay(QPainter &)            — наложение статистики и подписей
-//     drawGradientBackground(QPainter &) — фоновый градиент
-//     interpolateFrames()                — плавный переход между кадрами
-//     calculateBarWidth()                — адаптивная ширина столбца
-//
-//   СИГНАЛЫ:
-//     frameRendered(int frameIndex)      — кадр отрисован
-//     queueEmpty()                       — очередь кадров исчерпана
-//     fpsUpdated(int actualFPS)          — реально достигнутый FPS
-//
-//   ИНТЕРАКТИВНОСТЬ:
-//     — Наведение мыши на столбец показывает tooltip: индекс, значение,
-//       позиция в текущем массиве.
-//     — Клик правой кнопкой — контекстное меню: "Сохранить кадр как PNG",
-//       "Копировать в буфер обмена", "Показать в отдельном окне".
-//     — Колёсико мыши — масштабирование (zoom-in/out по горизонтали).
-//     — Перетаскивание — прокрутка при zoom > 1.
-////////////////////////////////////////////////////////////////////////////////
+#ifndef VISUALIZATIONWIDGET_H
+#define VISUALIZATIONWIDGET_H
+
+#include <QWidget>
+#include <QVector>
+#include <QTimer>
+#include <QQueue>
+#include <QLabel>
+#include <atomic>
+#include "../visualization/colorscheme.h"
+
+enum class HighlightType {
+    None,
+    Compare,
+    Swap,
+    Pivot,
+    Sorted,
+    Write
+};
+
+struct VisFrame {
+    std::vector<float> values;
+    std::vector<int> highlightedIdx;
+    HighlightType highlightType = HighlightType::None;
+    int pivotIndex = -1;
+    int sortedBoundary = -1;
+    long long comparisons = 0;
+    long long swaps = 0;
+    long long arrayAccesses = 0;
+    QString algoName;
+    bool isGpu = false;
+};
+
+class VisualizationWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit VisualizationWidget(QWidget *parent = nullptr);
+    ~VisualizationWidget() override;
+
+    void setAnimationSpeed(int fps);
+    void pause();
+    void resume();
+    void reset();
+    void setColorScheme(ColorScheme *scheme);
+    void stepForward();
+
+public slots:
+    void renderFrame(const VisFrame& frame);
+
+signals:
+    void frameRendered(int frameIndex);
+    void queueEmpty();
+    void fpsUpdated(int actualFPS);
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+
+private slots:
+    void processNextFrame();
+
+private:
+    void drawBars(QPainter &painter, const VisFrame &frame);
+    void drawHighlights(QPainter &painter, const VisFrame &frame);
+    void drawOverlay(QPainter &painter);
+    void drawGradientBackground(QPainter &painter);
+    void interpolateFrames();
+    int calculateBarWidth() const;
+
+    VisFrame currentFrame;
+    VisFrame nextFrame;
+    float interpolationT = 0.0f;
+    
+    QTimer *animTimer;
+    ColorScheme *colorScheme;
+    int animationSpeedFPS = 60;
+    bool isPaused = false;
+    
+    QQueue<VisFrame> frameQueue;
+    std::atomic<bool> isReceivingFrames{false};
+    
+    QLabel *overlayStatsLabel;
+    int maxColumns = 1000;
+    bool isStepMode = false;
+    
+    // Zoom/scroll
+    double zoomFactor = 1.0;
+    int scrollOffset = 0;
+    
+    int frameIndex = 0;
+    qint64 lastFrameTime = 0;
+};
+
+#endif // VISUALIZATIONWIDGET_H

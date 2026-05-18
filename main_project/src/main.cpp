@@ -1,61 +1,105 @@
-////////////////////////////////////////////////////////////////////////////////
-// main.cpp — точка входа приложения SortBench CUDA vs CPU
-//
-// НАЗНАЧЕНИЕ:
-//   Инициализирует QApplication, применяет глобальные настройки стиля,
-//   проверяет доступность CUDA-устройств, создаёт и показывает главное окно.
-//
-// СОДЕРЖИМОЕ И ЛОГИКА:
-//
-//   1. Инициализация QApplication
-//      — Передаёт argc/argv в QApplication для корректной обработки
-//        аргументов командной строки Qt (например, -stylesheet, -platform).
-//      — Устанавливает QApplication::setApplicationName("SortBench"),
-//        QApplication::setOrganizationName("CUDA Lab"),
-//        QApplication::setApplicationVersion("1.0.0") — эти данные используются
-//        в QSettings для хранения пользовательских настроек.
-//
-//   2. Разбор аргументов командной строки
-//      — QCommandLineParser разбирает опции:
-//          --no-cuda       : запустить только CPU-режим (без инициализации CUDA)
-//          --dark          : принудительно тёмная тема
-//          --light         : принудительно светлая тема
-//          --log-level=N   : уровень логирования (0=silent, 1=errors, 2=verbose)
-//          --benchmark=FILE: путь к файлу конфигурации авто-бенчмарка
-//          --export=FILE   : автоматически сохранить результаты в CSV и выйти
-//
-//   3. Инициализация подсистемы логирования
-//      — Logger::instance().initialize(...) — настраивает глобальный логгер:
-//        уровень, путь к файлу лога, формат временных меток.
-//      — Устанавливает qInstallMessageHandler для перехвата qDebug/qWarning.
-//
-//   4. Проверка CUDA
-//      — CudaDeviceInfo::queryAllDevices() — сканирует все доступные GPU.
-//      — Если CUDA недоступна (no driver, no device), выводит QMessageBox
-//        с предупреждением и предлагает продолжить в CPU-only режиме.
-//      — Результаты сохраняются в глобальный реестр устройств для дальнейшего
-//        использования в настройках и отображения информации о GPU.
-//
-//   5. Загрузка настроек
-//      — SettingsManager::instance().load() — читает QSettings из платформенного
-//        хранилища (Registry под Windows, ~/.config под Linux).
-//      — Восстанавливает: тему, размер окна, последние выбранные алгоритмы,
-//        предпочтительное CUDA-устройство, скорость анимации.
-//
-//   6. Применение темы
-//      — Загружает QSS-файл из ресурсов (darktheme.qss или lighttheme.qss).
-//      — Применяет через QApplication::setStyleSheet(...)
-//
-//   7. Создание главного окна
-//      — MainWindow mainWindow — создаёт главный виджет.
-//      — mainWindow.show() — отображает окно.
-//
-//   8. Запуск цикла событий
-//      — return QApplication::exec() — запускает event loop Qt.
-//        При закрытии главного окна цикл завершается, настройки сохраняются.
-//
-//   ОБРАБОТКА ИСКЛЮЧЕНИЙ:
-//      — try/catch вокруг всего main для перехвата std::exception и CUDA errors.
-//      — При фатальной ошибке показывается QMessageBox::critical с деталями.
-//      — Код возврата: 0 — успех, 1 — ошибка Qt, 2 — ошибка CUDA, 3 — фатал.
-////////////////////////////////////////////////////////////////////////////////
+#include <QApplication>
+#include <QCommandLineParser>
+#include <QMessageBox>
+#include <QStyleFactory>
+#include <QFile>
+#include <QDir>
+
+#include "mainwindow.h"
+#include "utils/logger.h"
+#include "utils/settingsmanager.h"
+#include "gpu/cudadeviceinfo.h"
+
+int main(int argc, char *argv[])
+{
+    // 1. Инициализация QApplication
+    QApplication app(argc, argv);
+    app.setApplicationName("SortBench");
+    app.setOrganizationName("CUDA Lab");
+    app.setApplicationVersion("1.0.0");
+    app.setWindowIcon(QIcon(":icons/app_icon.png"));
+    
+    // 2. Разбор аргументов командной строки
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Бенчмарк алгоритмов сортировки CPU vs GPU");
+    parser.addHelpOption();
+    parser.addVersionOption();
+    
+    QCommandLineOption noCudaOption(QStringList() << "no-cuda", 
+        "Запустить только CPU-режим (без CUDA)");
+    parser.addOption(noCudaOption);
+    
+    QCommandLineOption darkOption(QStringList() << "dark", 
+        "Принудительно тёмная тема");
+    parser.addOption(darkOption);
+    
+    QCommandLineOption lightOption(QStringList() << "light", 
+        "Принудительно светлая тема");
+    parser.addOption(lightOption);
+    
+    QCommandLineOption logLevelOption(QStringList() << "log-level", 
+        "Уровень логирования (0-3)", "level", "2");
+    parser.addOption(logLevelOption);
+    
+    QCommandLineOption benchmarkOption(QStringList() << "benchmark", 
+        "Файл конфигурации авто-бенчмарка", "file");
+    parser.addOption(benchmarkOption);
+    
+    QCommandLineOption exportOption(QStringList() << "export", 
+        "Экспорт результатов в файл и выход", "file");
+    parser.addOption(exportOption);
+    
+    parser.process(app);
+    
+    // 3. Инициализация логгера
+    int logLevel = parser.value(logLevelOption).toInt();
+    Logger::instance().initialize(static_cast<Logger::LogLevel>(logLevel), 
+                                  QDir::homePath() + "/.sortbench/sortbench.log");
+    
+    // 4. Проверка CUDA
+    bool cudaAvailable = true;
+    if (!parser.isSet(noCudaOption)) {
+        try {
+            int deviceCount = CudaDeviceInfo::queryAllDevices();
+            if (deviceCount == 0) {
+                cudaAvailable = false;
+                LOG_WARN("CUDA устройства не найдены");
+            } else {
+                LOG_INFO("Найдено CUDA устройств: %d", deviceCount);
+            }
+        } catch (const std::exception& e) {
+            cudaAvailable = false;
+            LOG_ERROR("Ошибка инициализации CUDA: %s", e.what());
+        }
+        
+        if (!cudaAvailable) {
+            QMessageBox::warning(nullptr, "CUDA недоступна",
+                "CUDA не обнаружена на этом устройстве.\n"
+                "Приложение будет работать в CPU-only режиме.");
+        }
+    }
+    
+    // 5. Загрузка настроек
+    bool useDarkTheme = parser.isSet(darkOption) || 
+                       (!parser.isSet(lightOption) && 
+                        SettingsManager::instance().value("theme/dark", true).toBool());
+    
+    // 6. Применение темы
+    QString themeFile = useDarkTheme ? ":/styles/darktheme.qss" : ":/styles/lighttheme.qss";
+    QFile styleFile(themeFile);
+    if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QString stylesheet = QString::fromUtf8(styleFile.readAll());
+        app.setStyleSheet(stylesheet);
+        styleFile.close();
+    }
+    
+    // Применение стиля Fusion для кроссплатформенности
+    app.setStyle(QStyleFactory::create("Fusion"));
+    
+    // 7. Создание и показ главного окна
+    MainWindow mainWindow;
+    mainWindow.show();
+    
+    // 8. Запуск цикла событий
+    return app.exec();
+}

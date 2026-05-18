@@ -1,9 +1,13 @@
 ```
-# Build artifacts
-build/
-dist/
+# Compiled and build artifacts
 *.o
 *.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.exe
 *.out
 
 # Dependencies
@@ -11,27 +15,39 @@ node_modules/
 venv/
 .venv/
 __pycache__/
-*.egg-info/
+.pip/
+.wheel/
 
-# IDE files
+# Build directories (common for C++ projects)
+build/
+dist/
+target/
+cmake-build-*/
+Makefile
+*.make
+*.cmake
+
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Logs and temp files
-*.log
 *.tmp
+*.log
+.DS_Store
+Thumbs.db
 
-# Environment
+# Environment files
 .env
 .env.local
 *.env.*
 
-# Coverage
+# Coverage and testing
+.coverage
 coverage/
 htmlcov/
-.coverage
+.pytest_cache/
+.mypy_cache/
 
 # Compressed files
 *.zip
@@ -52,4 +68,8 @@ htmlcov/
 *.Z
 *.lz
 *.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
