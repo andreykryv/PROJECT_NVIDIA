@@ -33,3 +33,79 @@
 //
 //   Устанавливается как qInstallMessageHandler в main.cpp.
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef LOGGER_H
+#define LOGGER_H
+
+#include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QFile>
+#include <QQueue>
+#include <QMutex>
+#include <QMessageLogContext>
+
+namespace SortBench {
+
+class Logger : public QObject
+{
+    Q_OBJECT
+
+public:
+    enum class Level {
+        Debug = 0,
+        Info = 1,
+        Warning = 2,
+        Error = 3,
+        Fatal = 4
+    };
+    Q_ENUM(Level)
+
+    explicit Logger(QObject *parent = nullptr);
+    ~Logger();
+
+    // Singleton access
+    static Logger* instance();
+
+    // Initialization
+    void initialize();
+
+    // Logging methods
+    void log(Level level, const QString &message, const QString &category = QString());
+    void debug(const QString &msg, const QString &cat = QString());
+    void info(const QString &msg, const QString &cat = QString());
+    void warning(const QString &msg, const QString &cat = QString());
+    void error(const QString &msg, const QString &cat = QString());
+    void fatal(const QString &msg, const QString &cat = QString());
+
+    // Configuration
+    void setMinLevel(Level level) { m_minLevel = level; }
+    void setMaxFileSize(size_t bytes) { m_maxFileSize = bytes; }
+
+    // Retrieve recent messages
+    QStringList getRecentMessages(int count = 100) const;
+
+    // Install as global Qt message handler
+    static void installMessageHandler();
+
+signals:
+    void messageLogged(const QString &formatted, int level);
+
+private:
+    static Logger* m_instance;
+    static QMutex m_mutex;
+
+    QFile *m_logFile;
+    QQueue<QString> m_recentMessages;
+    
+    Level m_minLevel = Level::Debug;
+    size_t m_maxFileSize;
+    int m_maxRecentMessages;
+
+    void rotateLog(const QString &fileName);
+    static void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+};
+
+} // namespace SortBench
+
+#endif // LOGGER_H
