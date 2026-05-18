@@ -1,40 +1,49 @@
-////////////////////////////////////////////////////////////////////////////////
-// visualization/animationcontroller.h — главный контроллер анимации
-//
-// НАЗНАЧЕНИЕ:
-//   AnimationController управляет жизненным циклом анимации:
-//   скоростью воспроизведения, паузой, пошаговым режимом,
-//   буферизацией кадров и синхронизацией с движком.
-//
-// КЛАСС: AnimationController : public QObject
-//
-//   РЕЖИМЫ:
-//     enum class Mode { RealTime, Buffered, StepByStep, FastForward }
-//
-//   ЧЛЕНЫ:
-//     QQueue<VisFrame> frameBuffer          — очередь входящих кадров
-//     int maxBufferSize                     — ограничение буфера (default: 300 кадров)
-//     QTimer *playbackTimer                 — таймер воспроизведения
-//     Mode mode
-//     int targetFPS                         — желаемый FPS
-//     bool paused
-//     int  frameIndex                       — текущий номер кадра
-//
-//   СЛОТЫ:
-//     onFrameReceived(VisFrame)             — добавляет кадр в буфер
-//     setTargetFPS(int fps)                 — меняет интервал таймера
-//     pause(), resume(), step()
-//     setMode(Mode)
-//     reset()                               — очистить буфер, сброс счётчика
-//
-//   СИГНАЛЫ:
-//     frameReady(VisFrame)                  — кадр готов к рендерингу
-//     bufferFull()                          — буфер переполнен (замедлить движок)
-//     bufferEmpty()                         — буфер пуст (ускорить движок)
-//     fpsActual(int)                        — реально достигнутый FPS
-//
-//   АДАПТИВНЫЙ FPS:
-//     — В режиме Buffered: если буфер > 80% → увеличить FPS воспроизведения.
-//       Если < 20% → уменьшить FPS, чтобы ждать движок.
-//     — Отправляет обратную связь движку через сигналы bufferFull/bufferEmpty.
-////////////////////////////////////////////////////////////////////////////////
+#ifndef ANIMATIONCONTROLLER_H
+#define ANIMATIONCONTROLLER_H
+
+#include <QObject>
+#include <QQueue>
+#include "visualization/sortvisualizer.h"
+
+namespace SortBench {
+
+class AnimationController : public QObject
+{
+    Q_OBJECT
+public:
+    explicit AnimationController(QObject *parent = nullptr);
+    
+    void setAnimationSpeed(float speed);
+    float animationSpeed() const;
+    
+    int frameDelayMs() const;
+    
+    void start();
+    void pause();
+    void resume();
+    void stop();
+    
+    bool isRunning() const;
+    int currentFrame() const;
+
+public slots:
+    void setCurrentFrame(int frame);
+    void advanceFrame();
+
+signals:
+    void started();
+    void paused();
+    void resumed();
+    void stopped();
+    void animationSpeedChanged(float speed);
+    void frameUpdated(int frame);
+
+private:
+    float m_animationSpeed;
+    bool m_running = false;
+    int m_currentFrame;
+};
+
+} // namespace SortBench
+
+#endif // ANIMATIONCONTROLLER_H

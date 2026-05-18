@@ -1,24 +1,47 @@
-////////////////////////////////////////////////////////////////////////////////
-// models/algorithmsmodel.h — Qt-модель списка алгоритмов
-//
-// НАЗНАЧЕНИЕ:
-//   QAbstractListModel для QComboBox и QListView. Отображает список алгоритмов
-//   с иконками, именами, цветовыми метками и информацией о сложности.
-//
-// КЛАСС: AlgorithmsModel : public QAbstractListModel
-//
-//   Роли:
-//     Qt::DisplayRole      — имя алгоритма ("Quick Sort")
-//     Qt::DecorationRole   — цветная иконка (QPixmap 16x16 заполненный цветом)
-//     Qt::ToolTipRole      — "O(n log n) avg | Стабильный: нет"
-//     AlgorithmNameRole    — полное имя
-//     AlgorithmColorRole   — QColor серии на графике
-//     AlgorithmTypeRole    — "CPU" или "GPU"
-//     ComplexityRole       — строка сложности
-//
-//   МЕТОДЫ:
-//     int rowCount(const QModelIndex&) const override
-//     QVariant data(const QModelIndex&, int role) const override
-//     void setCpuMode(bool)          — показывать только CPU или только GPU
-//     void setEnabledAlgorithms(QSet<QString>) — какие доступны
-////////////////////////////////////////////////////////////////////////////////
+#ifndef ALGORITHMSMODEL_H
+#define ALGORITHMSMODEL_H
+
+#include <QAbstractListModel>
+#include <QList>
+#include <QSet>
+#include <QString>
+#include <QColor>
+#include "core/algorithmregistry.h"
+
+namespace SortBench {
+
+class AlgorithmsModel : public QAbstractListModel
+{
+    Q_OBJECT
+public:
+    enum Roles {
+        AlgorithmNameRole = Qt::UserRole + 1,
+        AlgorithmColorRole,
+        AlgorithmTypeRole,
+        ComplexityRole,
+        EnabledRole
+    };
+
+    explicit AlgorithmsModel(QObject *parent = nullptr);
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+
+    void setCpuMode(bool cpuMode);
+    void setEnabledAlgorithms(const QSet<QString> &enabled);
+    
+    AlgorithmInfo getAlgorithm(int index) const;
+    int findAlgorithmByName(const QString &name) const;
+
+private:
+    void reloadAlgorithms();
+    
+    QList<AlgorithmInfo> m_algorithms;
+    bool m_cpuMode;
+    QSet<QString> m_enabledAlgorithms;
+};
+
+} // namespace SortBench
+
+#endif // ALGORITHMSMODEL_H

@@ -1,38 +1,56 @@
-////////////////////////////////////////////////////////////////////////////////
-// models/resultstablemodel.h — Qt-модель таблицы результатов
-//
-// НАЗНАЧЕНИЕ:
-//   QAbstractTableModel для QTableView на вкладке "Таблица результатов".
-//   Каждая строка = один BenchmarkResult, столбцы = метрики.
-//
-// КЛАСС: ResultsTableModel : public QAbstractTableModel
-//
-//   СТОЛБЦЫ:
-//     0  — Время/Дата
-//     1  — CPU Алгоритм
-//     2  — GPU Алгоритм
-//     3  — Размер массива
-//     4  — Тип данных
-//     5  — Распределение
-//     6  — CPU время (мс)
-//     7  — GPU total (мс)
-//     8  — GPU kernel (мс)
-//     9  — H2D (мс)
-//     10 — D2H (мс)
-//     11 — Ускорение GPU
-//     12 — Корректность
-//
-//   МЕТОДЫ:
-//     void addResult(BenchmarkResult)
-//     void clearResults()
-//     BenchmarkResult resultAt(int row) const
-//     void sortByColumn(int col, Qt::SortOrder) — переопределяет QAbstractTableModel::sort
-//     Qt::ItemFlags flags(const QModelIndex&) const override
-//         — ItemIsSelectable | ItemIsEnabled (строки только для чтения)
-//
-//   ФОРМАТИРОВАНИЕ:
-//     — Время: 2 знака после запятой мс.
-//     — Ускорение: цветовое кодирование через Qt::ForegroundRole:
-//       > 5x → зелёный, 1–5x → жёлтый, < 1x → красный.
-//     — Булевы: "✓" / "✗".
-////////////////////////////////////////////////////////////////////////////////
+#ifndef RESULTSTABLEMODEL_H
+#define RESULTSTABLEMODEL_H
+
+#include <QAbstractTableModel>
+#include <QList>
+#include <QColor>
+#include "core/benchmarkresult.h"
+
+namespace SortBench {
+
+class ResultsTableModel : public QAbstractTableModel
+{
+    Q_OBJECT
+public:
+    enum Column {
+        ColTimestamp = 0,
+        ColCpuAlgo,
+        ColGpuAlgo,
+        ColArraySize,
+        ColDataType,
+        ColDistribution,
+        ColCpuTime,
+        ColGpuTotalTime,
+        ColGpuKernelTime,
+        ColH2DTime,
+        ColD2HTime,
+        ColSpeedup,
+        ColCorrectness,
+        ColumnCount
+    };
+
+    explicit ResultsTableModel(QObject *parent = nullptr);
+
+    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
+    
+    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
+    Qt::ItemFlags flags(const QModelIndex &index) const override;
+    
+    void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
+
+    void addResult(const BenchmarkResult &result);
+    void clearResults();
+    BenchmarkResult resultAt(int row) const;
+    const QList<BenchmarkResult>& allResults() const { return m_results; }
+
+private:
+    QList<BenchmarkResult> m_results;
+    int m_sortColumn = 0;
+    Qt::SortOrder m_sortOrder = Qt::DescendingOrder;
+};
+
+} // namespace SortBench
+
+#endif // RESULTSTABLEMODEL_H
