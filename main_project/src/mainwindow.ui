@@ -1,0 +1,49 @@
+<!--
+  mainwindow.ui — XML-описание разметки главного окна (Qt Designer)
+
+  НАЗНАЧЕНИЕ:
+    Файл для Qt Designer / Qt UIC. Описывает исходную структуру виджетов
+    главного окна в формате XML. UIC генерирует из него ui_mainwindow.h,
+    который подключается в mainwindow.cpp через ui->setupUi(this).
+
+  СТРУКТУРА ВИДЖЕТОВ:
+
+  QMainWindow (objectName="MainWindow", минимальный размер 1200×800)
+    └── centralWidget (QWidget)
+          └── mainLayout (QHBoxLayout, spacing=0, margin=0)
+                ├── mainSplitter (QSplitter, orientation=Horizontal)
+                │     ├── leftPanel (QWidget, ширина ~300px, фиксированная мин.)
+                │     │     └── leftLayout (QVBoxLayout)
+                │     │           ├── controlPanel (ControlPanel — кастомный виджет)
+                │     │           ├── progressPanel (ProgressPanel — кастомный виджет)
+                │     │           └── statsPanel (StatsPanel — кастомный виджет)
+                │     └── rightPanel (QWidget, растягивается)
+                │           └── rightLayout (QVBoxLayout)
+                │                 └── tabWidget (QTabWidget)
+                │                       ├── tab "Визуализация"
+                │                       │     └── vizWidget (VisualizationWidget)
+                │                       ├── tab "Графики"
+                │                       │     └── chartWidget (ChartWidget)
+                │                       └── tab "Таблица результатов"
+                │                             └── resultsTable (QTableView)
+                └── (нет) — нижняя строка состояния управляется через statusBar()
+
+  СВОЙСТВА QMainWindow:
+    windowTitle: "SortBench — CUDA vs CPU Sorting Benchmark"
+    windowIcon: ресурс :/icons/app_icon.png
+    geometry: x=100, y=100, w=1440, h=900
+
+  DOCK WIDGETS (описываются программно, не через .ui):
+    — Панель лога подключается через addDockWidget() в mainwindow.cpp
+
+  PLACEHOLDERS В .ui:
+    — ControlPanel, ProgressPanel, StatsPanel, VisualizationWidget, ChartWidget
+      задаются как "promoted widgets" (promoted from QWidget).
+      Qt Designer знает только QWidget, но при сборке UIC подставляет
+      реальные классы из соответствующих заголовочных файлов.
+
+  СОЕДИНЕНИЯ В .ui (Qt Designer connections):
+    — Базовые соединения типа кнопка→слот не задаются здесь,
+      все соединения выполняются программно в mainwindow.cpp::connectSignals()
+      для лучшей читаемости и контроля над порядком инициализации.
+-->

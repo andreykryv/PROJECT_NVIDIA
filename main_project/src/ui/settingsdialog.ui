@@ -1,0 +1,6 @@
+<!--
+  settingsdialog.ui — XML-разметка диалога настроек
+  Задаёт QDialog с QTabWidget и стандартными кнопками QDialogButtonBox.
+  Promoted widgets для кастомных элементов управления устройством GPU.
+  Размер: 600x500, не изменяемый (fixed size dialog).
+-->

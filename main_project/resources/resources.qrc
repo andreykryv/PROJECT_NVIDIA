@@ -1,0 +1,37 @@
+<!--
+  resources/resources.qrc — Qt Resource File
+  Описывает все встраиваемые ресурсы приложения.
+  Компилируется rcc/AUTORCC в бинарный .cpp, встраиваемый в исполняемый файл.
+
+  СТРУКТУРА:
+
+  <qresource prefix="/styles">
+    darktheme.qss       — QSS-стили для тёмной темы
+    lighttheme.qss      — QSS-стили для светлой темы
+  </qresource>
+
+  <qresource prefix="/icons">
+    app_icon.png        — иконка приложения 256x256
+    run.png             — иконка кнопки "Запустить" 32x32
+    stop.png            — иконка кнопки "Стоп" 32x32
+    pause.png           — иконка кнопки "Пауза" 32x32
+    resume.png          — иконка кнопки "Возобновить" 32x32
+    reset.png           — иконка "Сброс"
+    export.png          — иконка "Экспорт"
+    settings.png        — иконка "Настройки"
+    info.png            — иконка "Информация"
+    cpu.png             — иконка CPU 32x32
+    gpu.png             — иконка GPU 32x32
+    chart.png           — иконка графика
+    table.png           — иконка таблицы
+    theme_dark.png      — иконка тёмной темы
+    theme_light.png     — иконка светлой темы
+  </qresource>
+
+  <qresource prefix="/fonts">
+    RobotoMono-Regular.ttf   — моноширинный шрифт для чисел и лога
+  </qresource>
+
+  Все файлы должны лежать рядом с resources.qrc в папке resources/.
+  Иконки: PNG, желательно SVG-источники для масштабируемости.
+-->
