@@ -7,21 +7,17 @@
 #include <QQueue>
 #include <QLabel>
 #include <atomic>
-#include "../visualization/colorscheme.h"
+#include "../core/sortparams.h"
 
-enum class HighlightType {
-    None,
-    Compare,
-    Swap,
-    Pivot,
-    Sorted,
-    Write
-};
+namespace SortBench {
+enum class HighlightType;
+class ColorScheme;
+}
 
 struct VisFrame {
     std::vector<float> values;
     std::vector<int> highlightedIdx;
-    HighlightType highlightType = HighlightType::None;
+    SortBench::HighlightType highlightType = SortBench::HighlightType::None;
     int pivotIndex = -1;
     int sortedBoundary = -1;
     long long comparisons = 0;
@@ -43,7 +39,7 @@ public:
     void pause();
     void resume();
     void reset();
-    void setColorScheme(ColorScheme *scheme);
+    void setColorScheme(SortBench::ColorScheme *scheme);
     void stepForward();
 
 public slots:
@@ -76,7 +72,7 @@ private:
     float interpolationT = 0.0f;
     
     QTimer *animTimer;
-    ColorScheme *colorScheme;
+    SortBench::ColorScheme *colorScheme;
     int animationSpeedFPS = 60;
     bool isPaused = false;
     

@@ -59,7 +59,14 @@
 
 cmake_minimum_required(VERSION 3.24)
 
-project(SortBench VERSION 1.0.0 LANGUAGES CXX CUDA)
+# Сначала проверяем опции до объявления проекта
+option(ENABLE_CUDA "Включить поддержку CUDA" ON)
+
+if(ENABLE_CUDA)
+    project(SortBench VERSION 1.0.0 LANGUAGES CXX CUDA)
+else()
+    project(SortBench VERSION 1.0.0 LANGUAGES CXX)
+endif()
 
 # Стандарты языков
 set(CMAKE_CXX_STANDARD 20)

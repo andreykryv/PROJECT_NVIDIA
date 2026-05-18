@@ -4,18 +4,12 @@
 #include <QObject>
 #include <QVector>
 #include <QColor>
-#include "visualization/colorscheme.h"
+#include "../core/sortparams.h"
 
 namespace SortBench {
 
-enum class HighlightType {
-    None,
-    Compare,
-    Swap,
-    Sorted,
-    Pivot,
-    Partition
-};
+// Используем HighlightType из sortbenchengine.h через forward declaration
+enum class HighlightType;
 
 struct VisFrame {
     QVector<int> values;
@@ -26,6 +20,8 @@ struct VisFrame {
     long long swaps = 0;
     bool isSorted = false;
 };
+
+class ColorScheme;
 
 class SortVisualizer : public QObject
 {
@@ -46,8 +42,8 @@ public:
     
     QColor getColorForValue(int value, int maxValue) const;
     
-    void setColorScheme(ColorScheme scheme) { m_colorScheme = scheme; }
-    ColorScheme colorScheme() const { return m_colorScheme; }
+    void setColorScheme(ColorScheme *scheme) { m_colorScheme = scheme; }
+    ColorScheme* colorScheme() const { return m_colorScheme; }
 
 private:
     QVector<int> m_array;
@@ -55,7 +51,7 @@ private:
     int m_arraySize;
     int m_highlightedIndex;
     int m_highlightedIndex2;
-    ColorScheme m_colorScheme = ColorScheme::Rainbow;
+    ColorScheme *m_colorScheme = nullptr;
 };
 
 } // namespace SortBench
