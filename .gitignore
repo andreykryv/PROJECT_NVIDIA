@@ -1,0 +1,67 @@
+```
+# Compiled and build artifacts
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+build/
+dist/
+
+# Dependencies
+venv/
+.venv/
+node_modules/
+__pycache__/
+*.egg-info/
+.Python
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+*.pyc
+*.pyo
+*.pyd
+.Python
+__pycache__/
+*.so
+.PyCharmCache/
+.mypy_cache/
+.pytest_cache/
+.tox/
+
+# Build systems
+target/
+.gradle/
+cmake_build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.manifest
+Makefile
+```

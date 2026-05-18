@@ -1,20 +1,42 @@
-////////////////////////////////////////////////////////////////////////////////
-// core/algorithmregistry.h — реестр метаданных алгоритмов
-//
-// СТРУКТУРА AlgorithmInfo:
-//   QString name, shortName, category ("CPU"/"GPU")
-//   QString timeComplexity, spaceComplexity
-//   QString description          — подробное описание на русском
-//   bool    stable, inPlace, parallelizable
-//   QColor  chartColor           — цвет серии на графике
-//
-// КЛАСС AlgorithmRegistry (Singleton):
-//   static AlgorithmRegistry& instance()
-//   AlgorithmInfo getInfo(CpuAlgorithm) const
-//   AlgorithmInfo getInfo(GpuAlgorithm) const
-//   QList<AlgorithmInfo> allCpuAlgorithms() const
-//   QList<AlgorithmInfo> allGpuAlgorithms() const
-//
-// Реестр заполняется в приватном конструкторе.
-// Хранение: QHash<int, AlgorithmInfo> (ключ — static_cast<int>(enum)).
-////////////////////////////////////////////////////////////////////////////////
+#ifndef ALGORITHMREGISTRY_H
+#define ALGORITHMREGISTRY_H
+
+#include <QString>
+#include <QColor>
+#include <QList>
+#include <QHash>
+#include "sortparams.h"
+
+namespace SortBench {
+
+struct AlgorithmInfo {
+    QString name;
+    QString shortName;
+    QString category;  // "CPU" or "GPU"
+    QString timeComplexity;
+    QString spaceComplexity;
+    QString description;
+    bool stable = false;
+    bool inPlace = false;
+    bool parallelizable = false;
+    QColor chartColor;
+};
+
+class AlgorithmRegistry {
+public:
+    static AlgorithmRegistry& instance();
+    
+    AlgorithmInfo getInfo(CpuAlgorithm algo) const;
+    AlgorithmInfo getInfo(GpuAlgorithm algo) const;
+    QList<AlgorithmInfo> allCpuAlgorithms() const;
+    QList<AlgorithmInfo> allGpuAlgorithms() const;
+    
+private:
+    AlgorithmRegistry();
+    QHash<int, AlgorithmInfo> m_cpuAlgorithms;
+    QHash<int, AlgorithmInfo> m_gpuAlgorithms;
+};
+
+} // namespace SortBench
+
+#endif // ALGORITHMREGISTRY_H
