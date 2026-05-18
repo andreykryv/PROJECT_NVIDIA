@@ -1,21 +1,51 @@
-////////////////////////////////////////////////////////////////////////////////
-// charts/scatterplotchart.h — scatter plot для детального сравнения
-//
-// НАЗНАЧЕНИЕ:
-//   Отображает все измеренные точки как scatter plot с соединяющими линиями.
-//   Каждая точка = один запуск теста. Позволяет видеть разброс при повторных
-//   запусках и выбросы (outliers).
-//
-// КЛАСС: ScatterPlotChart : public BenchmarkChartView
-//
-//   Использует QScatterSeries для точек и QLineSeries для линий тренда.
-//   Размер маркера = std::clamp(8, 4, 16): крупнее для CPU, меньше для GPU.
-//   Форма маркера: CPU → круг, GPU → ромб (VMarker).
-//   При hover на точку: popup с полными данными BenchmarkResult.
-//
-//   МЕТОДЫ:
-//     void addResult(BenchmarkResult)
-//     void setXAxis(XAxisMode) — TIME_AXIS / ARRAY_SIZE_AXIS
-//     void setShowTrend(bool)  — линии тренда (линейная регрессия)
-//     void setShowOutliers(bool) — подсветить выбросы (> 2σ от среднего)
-////////////////////////////////////////////////////////////////////////////////
+#ifndef SCATTERPLOTCHART_H
+#define SCATTERPLOTCHART_H
+
+#include "charts/benchmarkchartview.h"
+#include <QtCharts/QScatterSeries>
+#include <QtCharts/QLineSeries>
+#include <QList>
+
+namespace SortBench {
+
+enum class XAxisMode {
+    TimeAxis,
+    ArraySizeAxis
+};
+
+class ScatterPlotChart : public BenchmarkChartView
+{
+    Q_OBJECT
+
+public:
+    explicit ScatterPlotChart(QWidget *parent = nullptr);
+    
+    void addResult(const BenchmarkResult &result);
+    void setResults(const QList<BenchmarkResult> &results);
+    void clear();
+    
+    void setXAxisMode(XAxisMode mode);
+    void setShowTrend(bool show);
+    void setShowOutliers(bool show);
+
+private:
+    void rebuildChart();
+    void calculateTrendLines();
+    void highlightOutliers();
+    
+    QScatterSeries *m_cpuSeries;
+    QScatterSeries *m_gpuSeries;
+    QLineSeries *m_trendLineCpu;
+    QLineSeries *m_trendLineGpu;
+    QValueAxis *m_axisX;
+    QValueAxis *m_axisY;
+    
+    QList<BenchmarkResult> m_results;
+    XAxisMode m_xAxisMode = XAxisMode::TimeAxis;
+    bool m_showTrend = false;
+    bool m_showOutliers = false;
+};
+
+} // namespace SortBench
+
+#endif // SCATTERPLOTCHART_H
