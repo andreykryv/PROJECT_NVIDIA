@@ -55,3 +55,234 @@
 #     — install(FILES ... DESTINATION share/sortbench) — документация и примеры
 #     — На Windows дополнительно вызывается windeployqt для сборки DLL Qt.
 ################################################################################
+
+# Список всех CPP файлов
+set(SORTBENCH_SOURCES
+    # Main
+    main.cpp
+    mainwindow.cpp
+
+    # Core
+    core/algorithmregistry.cpp
+    core/arraygenerator.cpp
+    core/benchmarkresult.cpp
+    core/benchmarkrunner.cpp
+    core/sortbenchengine.cpp
+
+    # CPU сортировки
+    cpu/cpusorter.cpp
+    cpu/bubblesort.cpp
+    cpu/quicksort.cpp
+    cpu/mergesort.cpp
+    cpu/heapsort.cpp
+    cpu/radixsort.cpp
+    cpu/stdsort.cpp
+
+    # GPU сортировки
+    gpu/cudasorter.cpp
+    gpu/cudamemorymanager.cpp
+
+    # CUDA файлы
+    gpu/bitonicsort.cu
+    gpu/cudadeviceinfo.cu
+    gpu/cudaquicksort.cu
+    gpu/cudautils.cu
+    gpu/thrustradixsort.cu
+
+    # Charts
+    charts/benchmarkchartview.cpp
+    charts/comparisonbarchart.cpp
+    charts/scatterplotchart.cpp
+    charts/timelinechart.cpp
+
+    # Models
+    models/algorithmsmodel.cpp
+    models/resultstablemodel.cpp
+
+    # UI
+    ui/aboutdialog.cpp
+    ui/chartwidget.cpp
+    ui/controlpanel.cpp
+    ui/progresspanel.cpp
+    ui/settingsdialog.cpp
+    ui/statspanel.cpp
+    ui/visualizationwidget.cpp
+
+    # Utils
+    utils/csvexporter.cpp
+    utils/logger.cpp
+    utils/settingsmanager.cpp
+    utils/threadpool.cpp
+
+    # Visualization
+    visualization/animationcontroller.cpp
+    visualization/baranimation.cpp
+    visualization/colorscheme.cpp
+    visualization/sortvisualizer.cpp
+)
+
+# Список заголовочных файлов
+set(SORTBENCH_HEADERS
+    mainwindow.h
+
+    core/algorithmregistry.h
+    core/arraygenerator.h
+    core/benchmarkresult.h
+    core/benchmarkrunner.h
+    core/sortbenchengine.h
+    core/sortparams.h
+
+    cpu/cpusorter.h
+    cpu/bubblesort.h
+    cpu/quicksort.h
+    cpu/mergesort.h
+    cpu/heapsort.h
+    cpu/radixsort.h
+    cpu/stdsort.h
+
+    gpu/cudasorter.h
+    gpu/cudamemorymanager.h
+    gpu/bitonicsort.cuh
+    gpu/cudadeviceinfo.cuh
+    gpu/cudadeviceinfo.h
+    gpu/cudaquicksort.cuh
+    gpu/cudautils.cuh
+    gpu/thrustradixsort.cuh
+
+    charts/benchmarkchartview.h
+    charts/comparisonbarchart.h
+    charts/scatterplotchart.h
+    charts/timelinechart.h
+
+    models/algorithmsmodel.h
+    models/resultstablemodel.h
+
+    ui/aboutdialog.h
+    ui/chartwidget.h
+    ui/controlpanel.h
+    ui/progresspanel.h
+    ui/settingsdialog.h
+    ui/statspanel.h
+    ui/visualizationwidget.h
+
+    utils/csvexporter.h
+    utils/logger.h
+    utils/settingsmanager.h
+    utils/threadpool.h
+
+    visualization/animationcontroller.h
+    visualization/baranimation.h
+    visualization/colorscheme.h
+    visualization/sortvisualizer.h
+)
+
+# Указываем CMake, что .cu файлы — это CUDA
+set_source_files_properties(
+    gpu/bitonicsort.cu
+    gpu/cudadeviceinfo.cu
+    gpu/cudaquicksort.cu
+    gpu/cudautils.cu
+    gpu/thrustradixsort.cu
+    PROPERTIES LANGUAGE CUDA
+)
+
+# Создание исполняемого файла
+if(WIN32)
+    add_executable(SortBench WIN32 ${SORTBENCH_SOURCES} ${SORTBENCH_HEADERS})
+else()
+    add_executable(SortBench ${SORTBENCH_SOURCES} ${SORTBENCH_HEADERS})
+endif()
+
+# Настройки CUDA для целевого файла
+set_target_properties(SortBench PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
+)
+
+# Подключение библиотек
+target_link_libraries(SortBench PRIVATE
+    Qt6::Widgets
+    Qt6::Charts
+    Qt6::Concurrent
+    CUDA::cudart
+    CUDA::cuda_driver
+    CUDA::cublas
+    CUDA::cufft
+)
+
+# Добавление ресурсов Qt
+qt_add_resources(SortBench "resources"
+    PREFIX "/"
+    FILES
+        ../resources/resources.qrc
+        ../resources/styles/darktheme.qss
+        ../resources/styles/lighttheme.qss
+)
+
+# Пути поиска заголовков
+target_include_directories(SortBench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu
+    ${CMAKE_CURRENT_SOURCE_DIR}/charts
+    ${CMAKE_CURRENT_SOURCE_DIR}/models
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/visualization
+)
+
+# Автоматические правила Qt (MOC, UIC, RCC)
+set_target_properties(SortBench PROPERTIES
+    AUTOMOC ON
+    AUTOUIC ON
+    AUTORCC ON
+)
+
+# Определение макросов компиляции
+target_compile_definitions(SortBench PRIVATE
+    SORTBENCH_VERSION="${PROJECT_VERSION}"
+    QT_USE_QSTRINGBUILDER
+    $<$<CONFIG:Debug>:SORTBENCH_DEBUG>
+    $<$<BOOL:${SORTBENCH_ENABLE_PROFILING}>:SORTBENCH_PROFILING_ENABLED>
+    $<$<BOOL:${SORTBENCH_DEBUG_ANIMATION}>:SORTBENCH_DEBUG_ANIMATION_ENABLED>
+    SORTBENCH_MAX_ARRAY_SIZE=${SORTBENCH_MAX_ARRAY_SIZE}
+)
+
+# Правила установки
+install(TARGETS SortBench
+    BUNDLE DESTINATION .
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Установка дополнительных файлов
+install(FILES
+    ../README.md
+    ../LICENSE
+    DESTINATION share/sortbench
+)
+
+# Windows-specific: windeployqt
+if(WIN32)
+    install(CODE [[
+        file(GET_RUNTIME_DEPENDENCIES
+            EXECUTABLES $<TARGET_FILE:SortBench>
+            RESOLVED_DEPENDENCIES_VAR _r_deps
+            UNRESOLVED_DEPENDENCIES_VAR _u_deps
+            DIRECTORIES
+        )
+        foreach(_file ${_r_deps})
+            file(INSTALL
+                DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+                TYPE SHARED_LIBRARY
+                FOLLOW_SYMLINK_CHAIN
+                FILES "${_file}"
+            )
+        endforeach()
+        list(LENGTH _u_deps _u_len)
+        if("${_u_len}" GREATER 0)
+            message(WARNING "Unresolved dependencies: ${_u_deps}")
+        endif()
+    ]])
+endif()

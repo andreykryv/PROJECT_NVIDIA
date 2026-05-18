@@ -56,3 +56,76 @@
 #     Задаёт параметры для генерации инсталляторов под Windows (NSIS),
 #     Linux (DEB/RPM) и macOS (DMG) командой cmake --build . --target package.
 ################################################################################
+
+cmake_minimum_required(VERSION 3.24)
+
+project(SortBench VERSION 1.0.0 LANGUAGES CXX CUDA)
+
+# Стандарты языков
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_EXTENSIONS OFF)
+
+# Целевые архитектуры GPU
+set(CMAKE_CUDA_ARCHITECTURES "75;86;89")
+
+# Опции сборки
+option(SORTBENCH_ENABLE_PROFILING "Включить профилировщик CUDA Nsight" OFF)
+option(SORTBENCH_DEBUG_ANIMATION "Подробное логирование анимационных кадров" OFF)
+set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный размер массива")
+
+# Поиск Qt6
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Concurrent)
+
+# Поиск CUDA Toolkit
+find_package(CUDAToolkit REQUIRED)
+
+# Выходной каталог для исполняемых файлов
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+# Добавление подпроекта src
+add_subdirectory(src)
+
+# Настройки оптимизации для Release
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-O3>
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math;-O3>
+    )
+endif()
+
+# Настройки отладки для Debug
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:-g;-G>
+    )
+endif()
+
+# Конфигурация CPack для создания инсталляторов
+set(CPACK_PACKAGE_NAME "SortBench")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Benchmark CUDA vs CPU Sorting Algorithms")
+set(CPACK_PACKAGE_VENDOR "SortBench Team")
+set(CPACK_PACKAGE_CONTACT "sortbench@example.com")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
+
+# Генераторы для разных платформ
+if(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+elseif(APPLE)
+    set(CPACK_GENERATOR "DragNDrop")
+else()
+    set(CPACK_GENERATOR "DEB;RPM")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "qt6-base-dev, qt6-charts-dev")
+    set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-devel, qt6-qtcharts-devel")
+endif()
+
+include(CPack)
