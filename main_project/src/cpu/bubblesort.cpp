@@ -1,6 +1,13 @@
-////////////////////////////////////////////////////////////////////////////////
-// cpu/bubblesort.cpp — реализация Bubble Sort
-// Содержит полную реализацию метода sort<T>() с инструментацией callback.
-// Явные инстанции: int32_t, int64_t, float, double.
-// Сложность: O(n²) сравнений в худшем случае, O(n) на почти отсортированных.
-////////////////////////////////////////////////////////////////////////////////
+#include "bubblesort.h"
+
+namespace SortBench {
+
+// BubbleSort полностью реализован в заголовочном файле как template class
+// Этот файл оставлен для явных инстанциаций шаблона
+
+template class BubbleSort<int32_t>;
+template class BubbleSort<int64_t>;
+template class BubbleSort<float>;
+template class BubbleSort<double>;
+
+} // namespace SortBench

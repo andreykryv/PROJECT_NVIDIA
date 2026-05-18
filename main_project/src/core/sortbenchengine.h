@@ -27,7 +27,7 @@ struct VisFrame {
     long long swaps;                       // счётчик перестановок
     int totalElements;                     // всего элементов
     
-    VisFrame() : comparisons(0), swaps(0), totalElements(0) {}
+    VisFrame() : highlightType(HighlightType::None), comparisons(0), swaps(0), totalElements(0) {}
 };
 
 enum class HighlightType {
@@ -40,6 +40,7 @@ enum class HighlightType {
 
 class SortBenchEngine : public QObject {
     Q_OBJECT
+    Q_ENUM(State)
 
 public:
     enum class State {
@@ -54,7 +55,6 @@ public:
         Finished,
         Stopped
     };
-    Q_ENUM(State)
 
     explicit SortBenchEngine(QObject *parent = nullptr);
     ~SortBenchEngine();

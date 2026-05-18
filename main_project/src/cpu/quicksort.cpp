@@ -1,6 +1,13 @@
-////////////////////////////////////////////////////////////////////////////////
-// cpu/quicksort.cpp — реализация Quick Sort
-// Реализует quicksort3Way с медианой из трёх в качестве pivot.
-// Fallback на insertionSort для len < 10.
-// Явные инстанции: int32_t, int64_t, float, double.
-////////////////////////////////////////////////////////////////////////////////
+#include "quicksort.h"
+
+namespace SortBench {
+
+// QuickSort полностью реализован в заголовочном файле как template class
+// Этот файл оставлен для явных инстанциаций шаблона
+
+template class QuickSort<int32_t>;
+template class QuickSort<int64_t>;
+template class QuickSort<float>;
+template class QuickSort<double>;
+
+} // namespace SortBench
