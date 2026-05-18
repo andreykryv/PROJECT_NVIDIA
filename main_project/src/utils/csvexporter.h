@@ -31,3 +31,50 @@
 //     — Открывает QFileDialog для выбора пути и формата.
 //     — Показывает QProgressDialog при большом числе записей.
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef CSV_EXPORTER_H
+#define CSV_EXPORTER_H
+
+#include <QString>
+#include <QList>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFileDialog>
+#include <QProgressDialog>
+#include <QWidget>
+
+// Forward declaration
+class BenchmarkResult;
+
+class CsvExporter {
+public:
+    // Экспорт в CSV
+    static bool exportCsv(const QList<BenchmarkResult>& results, const QString& filePath);
+    
+    // Экспорт в JSON
+    static bool exportJson(const QList<BenchmarkResult>& results, const QString& filePath);
+    
+    // Экспорт в Markdown таблицу
+    static bool exportMarkdownTable(const QList<BenchmarkResult>& results, const QString& filePath);
+    
+    // Импорт из CSV
+    static QList<BenchmarkResult> importCsv(const QString& filePath);
+    
+    // Диалог экспорта
+    static bool exportWithDialog(QWidget* parent, const QList<BenchmarkResult>& results);
+    
+    // Форматирование числа с разделителями
+    static QString formatNumber(double value, int precision = 3);
+    
+    // Экранирование CSV поля
+    static QString escapeCsvField(const QString& field);
+    
+private:
+    // Парсинг одной строки CSV
+    static BenchmarkResult parseCsvLine(const QString& line);
+};
+
+#endif // CSV_EXPORTER_H

@@ -69,3 +69,141 @@
 //     benchmarkStarted()
 //     benchmarkStopped()
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QSplitter>
+#include <QTabWidget>
+#include <QDockWidget>
+#include <QTextEdit>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QLabel>
+#include <QTimer>
+#include <QList>
+
+#include "core/benchmarkresult.h"
+#include "visualization/sortvisualizer.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
+class ControlPanel;
+class VisualizationWidget;
+class ChartWidget;
+class ProgressPanel;
+class StatsPanel;
+class SortBenchEngine;
+class SettingsDialog;
+class AboutDialog;
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
+
+signals:
+    void themeChanged(bool isDark);
+    void benchmarkStarted();
+    void benchmarkStopped();
+
+private slots:
+    // Управление бенчмарком
+    void onRunBenchmark();
+    void onStopBenchmark();
+    void onPauseResume();
+    void onResetAll();
+    
+    // Параметры
+    void onAlgorithmChanged();
+    void onArraySizeChanged(int size);
+    void onAnimationSpeedChanged(int speed);
+    
+    // Результаты
+    void onBenchmarkFinished(const BenchmarkResult &result);
+    void onProgressUpdated(int percent);
+    void onVisualizationFrame(const VisualizationFrame &frame);
+    
+    // Экспорт и настройки
+    void onExportCSV();
+    void onExportChart();
+    void onOpenSettings();
+    void onShowAbout();
+    
+    // Тема и вид
+    void onThemeToggle();
+    void onFullscreenToggle();
+    void onFpsTimerTick();
+    
+    // Логирование
+    void onLogMessage(const QString &message, int level);
+    void onGPUMemoryUpdated(size_t used, size_t total);
+
+private:
+    // Инициализация UI
+    void setupMenuBar();
+    void setupToolBar();
+    void setupStatusBar();
+    void setupDockWidgets();
+    void setupShortcuts();
+    
+    // Настройки
+    void applyTheme(const QString &themeName);
+    void saveLayout();
+    void restoreLayout();
+    
+    // Сигналы
+    void connectSignals();
+    void updateWindowTitle();
+    
+    // События
+    void closeEvent(QCloseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+
+private:
+    Ui::MainWindow *ui = nullptr;
+    
+    // Панели
+    ControlPanel *controlPanel = nullptr;
+    VisualizationWidget *vizWidget = nullptr;
+    ChartWidget *chartWidget = nullptr;
+    ProgressPanel *progressPanel = nullptr;
+    StatsPanel *statsPanel = nullptr;
+    
+    // Движок
+    SortBenchEngine *engine = nullptr;
+    
+    // Layout
+    QSplitter *mainSplitter = nullptr;
+    QTabWidget *tabWidget = nullptr;
+    
+    // Dock widgets
+    QDockWidget *logDock = nullptr;
+    QTextEdit *logView = nullptr;
+    
+    // Status bar
+    QStatusBar *statusBar = nullptr;
+    QToolBar *toolbar = nullptr;
+    QLabel *gpuInfoLabel = nullptr;
+    QLabel *fpsLabel = nullptr;
+    
+    // Таймеры
+    QTimer *fpsTimer = nullptr;
+    
+    // Диалоги
+    SettingsDialog *settingsDialog = nullptr;
+    AboutDialog *aboutDialog = nullptr;
+    
+    // Состояние
+    bool m_isDarkTheme = true;
+    QList<BenchmarkResult> m_results;
+};
+
+#endif // MAINWINDOW_H

@@ -1,76 +1,110 @@
-////////////////////////////////////////////////////////////////////////////////
-// ui/controlpanel.h — заголовок панели управления тестами
-//
-// НАЗНАЧЕНИЕ:
-//   ControlPanel — левая панель приложения с элементами выбора алгоритмов,
-//   настройки параметров массива и кнопками управления запуском теста.
-//   Это главный инструмент взаимодействия пользователя с приложением.
-//
-// КЛАСС: ControlPanel : public QWidget
-//
-//   СЕКЦИЯ "Алгоритм":
-//     QGroupBox "Алгоритм сортировки"
-//       — QComboBox *cpuAlgorithmCombo   : выбор CPU-алгоритма
-//           Пункты: "Bubble Sort", "Quick Sort", "Merge Sort", "Heap Sort",
-//                   "Radix Sort (LSD)", "std::sort (intro sort)"
-//       — QComboBox *gpuAlgorithmCombo   : выбор GPU-алгоритма
-//           Пункты: "Bitonic Sort", "Thrust Radix Sort", "GPU Quick Sort",
-//                   "CUB Device Sort", "Отключён"
-//       — QCheckBox *enableCPU           : включить/выключить CPU-ветку
-//       — QCheckBox *enableGPU           : включить/выключить GPU-ветку
-//       — QPushButton *algoInfoBtn       : кнопка "?" — показывает popup
-//                                          с описанием алгоритма и его сложностью
-//
-//   СЕКЦИЯ "Массив":
-//     QGroupBox "Параметры массива"
-//       — QSpinBox *arraySizeSpinBox     : размер массива (1 000 – 100 000 000)
-//       — QSlider *arraySizeSlider       : логарифмический слайдер (1K – 100M)
-//                                          синхронизирован с arraySizeSpinBox
-//       — QComboBox *dataTypeCombo       : тип данных
-//           Пункты: "int32", "int64", "float", "double"
-//       — QComboBox *distributionCombo   : начальное распределение элементов
-//           Пункты: "Случайное равномерное", "Почти отсортированное",
-//                   "Обратный порядок", "Много повторов", "Пилообразное",
-//                   "Шагающий шум", "Случайное нормальное"
-//       — QSpinBox *randomSeedSpinBox    : зерно генератора (для воспроизводимости)
-//       — QCheckBox *autoSeedCheck       : автоматическое зерно (random_device)
-//
-//   СЕКЦИЯ "Анимация":
-//     QGroupBox "Настройки анимации"
-//       — QSlider *animSpeedSlider       : скорость (0=пошаговая, 100=максимальная)
-//       — QLabel  *animSpeedLabel        : текстовое значение скорости
-//       — QCheckBox *showComparisonsCheck : подсвечивать сравниваемые элементы
-//       — QCheckBox *showAccessCountCheck : показывать счётчик обращений к массиву
-//       — QComboBox *colorSchemeCombo    : цветовая схема столбцов
-//           Пункты: "Радужная", "Тепловая карта", "Монохром", "Статус-цвета"
-//       — QSpinBox *maxVisElementsSpin   : макс. число отображаемых столбцов
-//                                          (при большом массиве — прореживание)
-//
-//   СЕКЦИЯ "Серийное тестирование":
-//     QGroupBox "Авто-серия"
-//       — QCheckBox *batchModeCheck      : режим серии тестов
-//       — QPushButton *configureBatchBtn : открыть диалог настройки серии
-//       — QLabel *batchStatusLabel       : "0 / N тестов выполнено"
-//
-//   КНОПКИ УПРАВЛЕНИЯ:
-//     QPushButton *runBtn               : "▶ Запустить" (зелёная, F5)
-//     QPushButton *stopBtn              : "■ Стоп" (красная, Esc, disabled)
-//     QPushButton *pauseResumeBtn       : "⏸ Пауза" (жёлтая, Пробел, disabled)
-//     QPushButton *resetBtn             : "↺ Сброс" (серая)
-//
-//   СИГНАЛЫ:
-//     parametersChanged(SortParams)     — эмитируется при любом изменении параметров
-//     runRequested()                    — нажатие "Запустить"
-//     stopRequested()                   — нажатие "Стоп"
-//     pauseResumeRequested()            — нажатие "Пауза/Возобновить"
-//     resetRequested()                  — нажатие "Сброс"
-//     animationSpeedChanged(int)        — изменение скорости анимации
-//
-//   МЕТОДЫ:
-//     SortParams getCurrentParams() const — возвращает текущие параметры
-//     void setRunning(bool)              — блокирует/разблокирует элементы UI
-//     void setPaused(bool)               — меняет текст кнопки пауза/возобновить
-//     void updateBatchProgress(int, int) — обновляет batchStatusLabel
-//     void loadFromSettings()            — восстанавливает значения из QSettings
-//     void saveToSettings() const        — сохраняет значения в QSettings
-////////////////////////////////////////////////////////////////////////////////
+#ifndef CONTROLPANEL_H
+#define CONTROLPANEL_H
+
+#include <QWidget>
+#include <QGroupBox>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QSpinBox>
+#include <QSlider>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include "../core/sortparams.h"
+
+class ControlPanel : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ControlPanel(QWidget *parent = nullptr);
+    ~ControlPanel() override = default;
+
+    SortParams getCurrentParams() const;
+    void setRunning(bool running);
+    void setPaused(bool paused);
+    void updateBatchProgress(int done, int total);
+    void loadFromSettings();
+    void saveToSettings() const;
+
+signals:
+    void parametersChanged(const SortParams& params);
+    void runRequested();
+    void stopRequested();
+    void pauseResumeRequested();
+    void resetRequested();
+    void animationSpeedChanged(int fps);
+
+private slots:
+    void onAlgorithmChanged();
+    void onArraySizeChanged();
+    void onDistributionChanged();
+    void onAnimSpeedChanged(int value);
+    void onRunClicked();
+    void onStopClicked();
+    void onPauseResumeClicked();
+    void onResetClicked();
+    void onAlgoInfoClicked();
+    void onConfigureBatchClicked();
+
+private:
+    void setupAlgorithmSection();
+    void setupArraySection();
+    void setupAnimationSection();
+    void setupBatchSection();
+    void setupControlButtons();
+    void connectSignals();
+    int logScaleToSize(int logValue) const;
+    int sizeToLogScale(int size) const;
+
+    // Algorithm section
+    QGroupBox *algorithmGroup;
+    QComboBox *cpuAlgorithmCombo;
+    QComboBox *gpuAlgorithmCombo;
+    QCheckBox *enableCpuCheck;
+    QCheckBox *enableGpuCheck;
+    QPushButton *algoInfoBtn;
+
+    // Array section
+    QGroupBox *arrayGroup;
+    QSpinBox *arraySizeSpinBox;
+    QSlider *arraySizeSlider;
+    QComboBox *dataTypeCombo;
+    QComboBox *distributionCombo;
+    QSpinBox *randomSeedSpin;
+    QCheckBox *autoSeedCheck;
+
+    // Animation section
+    QGroupBox *animationGroup;
+    QSlider *animSpeedSlider;
+    QLabel *animSpeedLabel;
+    QCheckBox *showComparisonsCheck;
+    QCheckBox *showAccessCountCheck;
+    QComboBox *colorSchemeCombo;
+    QSpinBox *maxVisElementsSpin;
+
+    // Batch section
+    QGroupBox *batchGroup;
+    QCheckBox *batchModeCheck;
+    QPushButton *configureBatchBtn;
+    QLabel *batchStatusLabel;
+
+    // Control buttons
+    QPushButton *runBtn;
+    QPushButton *stopBtn;
+    QPushButton *pauseResumeBtn;
+    QPushButton *resetBtn;
+
+    // State
+    bool m_running;
+    bool m_paused;
+    
+    SortParams buildParams() const;
+    void setupUi();
+    void populateAlgorithms();
+    void checkCudaAvailability();
+    void showAlgorithmInfo();
+};
+
+#endif // CONTROLPANEL_H
