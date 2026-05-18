@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
   resources/resources.qrc — Qt Resource File
   Описывает все встраиваемые ресурсы приложения.
@@ -35,3 +36,31 @@
   Все файлы должны лежать рядом с resources.qrc в папке resources/.
   Иконки: PNG, желательно SVG-источники для масштабируемости.
 -->
+<RCC>
+    <qresource prefix="/styles">
+        <file>styles/darktheme.qss</file>
+        <file>styles/lighttheme.qss</file>
+    </qresource>
+    
+    <qresource prefix="/icons">
+        <file>icons/app_icon.png</file>
+        <file>icons/run.png</file>
+        <file>icons/stop.png</file>
+        <file>icons/pause.png</file>
+        <file>icons/resume.png</file>
+        <file>icons/reset.png</file>
+        <file>icons/export.png</file>
+        <file>icons/settings.png</file>
+        <file>icons/info.png</file>
+        <file>icons/cpu.png</file>
+        <file>icons/gpu.png</file>
+        <file>icons/chart.png</file>
+        <file>icons/table.png</file>
+        <file>icons/theme_dark.png</file>
+        <file>icons/theme_light.png</file>
+    </qresource>
+    
+    <qresource prefix="/fonts">
+        <file>fonts/RobotoMono-Regular.ttf</file>
+    </qresource>
+</RCC>
