@@ -3,6 +3,7 @@
 
 #include <QColor>
 #include <QString>
+#include "../core/sortparams.h"
 
 namespace SortBench {
 
@@ -13,13 +14,6 @@ enum class ElementState {
     Pivot,
     Sorted,
     Writing
-};
-
-enum class ColorSchemeType {
-    Rainbow,
-    Heatmap,
-    Monochrome,
-    StatusColors
 };
 
 class ColorScheme {

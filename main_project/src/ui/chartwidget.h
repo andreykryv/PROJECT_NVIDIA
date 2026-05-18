@@ -24,7 +24,7 @@ public:
     explicit ChartWidget(QWidget *parent = nullptr);
     ~ChartWidget() override = default;
 
-    void addResult(const BenchmarkResult& result);
+    void addResult(const SortBench::BenchmarkResult& result);
     void clearResults();
     void setMaxResults(int max);
     bool exportChart(int tabIndex, const QString& path);
@@ -57,7 +57,7 @@ private:
     QChart *gpuDetailChart;
     
     // Data
-    QList<BenchmarkResult> results;
+    QList<SortBench::BenchmarkResult> results;
     int maxStoredResults;
 };
 

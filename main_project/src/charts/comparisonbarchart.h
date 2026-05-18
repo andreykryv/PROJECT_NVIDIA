@@ -2,6 +2,7 @@
 #define COMPARISONBARCHART_H
 
 #include "charts/benchmarkchartview.h"
+#include "core/benchmarkresult.h"
 #include <QtCharts/QBarSeries>
 #include <QtCharts/QBarSet>
 #include <QtCharts/QBarCategoryAxis>

@@ -18,6 +18,14 @@ namespace SortBench {
 class CpuSorter;
 class CudaSorter;
 
+enum class HighlightType {
+    Compare,
+    Swap,
+    Sorted,
+    Pivot,
+    None
+};
+
 // Кадр визуализации
 struct VisFrame {
     std::vector<float> normalizedValues;  // значения в [0, 1]
@@ -28,14 +36,6 @@ struct VisFrame {
     int totalElements;                     // всего элементов
     
     VisFrame() : highlightType(HighlightType::None), comparisons(0), swaps(0), totalElements(0) {}
-};
-
-enum class HighlightType {
-    Compare,
-    Swap,
-    Sorted,
-    Pivot,
-    None
 };
 
 class SortBenchEngine : public QObject {

@@ -85,7 +85,7 @@
 #include <QList>
 
 #include "core/benchmarkresult.h"
-#include "visualization/sortvisualizer.h"
+#include "core/sortbenchengine.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -126,9 +126,9 @@ private slots:
     void onAnimationSpeedChanged(int speed);
     
     // Результаты
-    void onBenchmarkFinished(const BenchmarkResult &result);
+    void onBenchmarkFinished(const SortBench::BenchmarkResult &result);
     void onProgressUpdated(int percent);
-    void onVisualizationFrame(const VisualizationFrame &frame);
+    void onVisualizationFrame(const SortBench::VisFrame &frame);
     
     // Экспорт и настройки
     void onExportCSV();
@@ -203,7 +203,7 @@ private:
     
     // Состояние
     bool m_isDarkTheme = true;
-    QList<BenchmarkResult> m_results;
+    QList<SortBench::BenchmarkResult> m_results;
 };
 
 #endif // MAINWINDOW_H

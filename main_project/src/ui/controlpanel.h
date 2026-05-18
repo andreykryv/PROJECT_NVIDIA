@@ -21,7 +21,7 @@ public:
     explicit ControlPanel(QWidget *parent = nullptr);
     ~ControlPanel() override = default;
 
-    SortParams getCurrentParams() const;
+    SortBench::SortParams getCurrentParams() const;
     void setRunning(bool running);
     void setPaused(bool paused);
     void updateBatchProgress(int done, int total);
@@ -29,7 +29,7 @@ public:
     void saveToSettings() const;
 
 signals:
-    void parametersChanged(const SortParams& params);
+    void parametersChanged(const SortBench::SortParams& params);
     void runRequested();
     void stopRequested();
     void pauseResumeRequested();
@@ -100,7 +100,7 @@ private:
     bool m_running;
     bool m_paused;
     
-    SortParams buildParams() const;
+    SortBench::SortParams buildParams() const;
     void setupUi();
     void populateAlgorithms();
     void checkCudaAvailability();

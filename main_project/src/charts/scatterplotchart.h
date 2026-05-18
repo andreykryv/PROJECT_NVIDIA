@@ -2,6 +2,7 @@
 #define SCATTERPLOTCHART_H
 
 #include "charts/benchmarkchartview.h"
+#include "core/benchmarkresult.h"
 #include <QtCharts/QScatterSeries>
 #include <QtCharts/QLineSeries>
 #include <QList>
