@@ -1,6 +1,851 @@
-<!--
-  settingsdialog.ui — XML-разметка диалога настроек
-  Задаёт QDialog с QTabWidget и стандартными кнопками QDialogButtonBox.
-  Promoted widgets для кастомных элементов управления устройством GPU.
-  Размер: 600x500, не изменяемый (fixed size dialog).
--->
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SettingsDialog</class>
+ <widget class="QDialog" name="SettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>750</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>700</width>
+    <height>550</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Настройки SortBench</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../resources/resources.qrc">
+    <normaloff>:/icons/settings.png</normaloff>
+   </iconset>
+  </property>
+  <property name="modal">
+   <bool>true</bool>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <property name="leftMargin">
+    <number>16</number>
+   </property>
+   <property name="topMargin">
+    <number>16</number>
+   </property>
+   <property name="rightMargin">
+    <number>16</number>
+   </property>
+   <property name="bottomMargin">
+    <number>12</number>
+   </property>
+
+   <!-- Вкладки настроек -->
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <property name="documentMode">
+     <bool>false</bool>
+    </property>
+
+    <!-- Вкладка 1: Общие настройки -->
+    <widget class="QWidget" name="generalTab">
+     <attribute name="title">
+      <string>Общие</string>
+     </attribute>
+     <layout class="QVBoxLayout" name="generalLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+
+      <!-- Группа: Тема оформления -->
+      <widget class="QGroupBox" name="themeGroup">
+       <property name="title">
+        <string>Тема оформления</string>
+       </property>
+       <layout class="QVBoxLayout" name="themeLayout">
+        <item>
+         <widget class="QRadioButton" name="systemThemeRadio">
+          <property name="text">
+           <string>Системная тема</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="darkThemeRadio">
+          <property name="text">
+           <string>Тёмная тема (Catppuccin)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="lightThemeRadio">
+          <property name="text">
+           <string>Светлая тема (Material)</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Язык -->
+      <widget class="QGroupBox" name="languageGroup">
+       <property name="title">
+        <string>Язык интерфейса</string>
+       </property>
+       <layout class="QHBoxLayout" name="languageLayout">
+        <item>
+         <widget class="QComboBox" name="languageCombo">
+          <item>
+           <property name="text">
+            <string>Русский</string>
+           </property>
+           <property name="data">
+            <string>ru_RU</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>English</string>
+           </property>
+           <property name="data">
+            <string>en_US</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <spacer name="languageSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Автозапуск -->
+      <widget class="QGroupBox" name="startupGroup">
+       <property name="title">
+        <string>При запуске</string>
+       </property>
+       <layout class="QVBoxLayout" name="startupLayout">
+        <item>
+         <widget class="QCheckBox" name="restoreGeometryCheck">
+          <property name="text">
+           <string>Восстанавливать размер и положение окна</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="autoBenchmarkCheck">
+          <property name="text">
+           <string>Автоматически запускать бенчмарк при старте</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <item>
+       <spacer name="generalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+
+    <!-- Вкладка 2: Настройки бенчмарка -->
+    <widget class="QWidget" name="benchmarkTab">
+     <attribute name="title">
+      <string>Бенчмарк</string>
+     </attribute>
+     <layout class="QVBoxLayout" name="benchmarkLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+
+      <!-- Группа: Размеры массивов -->
+      <widget class="QGroupBox" name="arraySizeGroup">
+       <property name="title">
+        <string>Размеры массивов для тестирования</string>
+       </property>
+       <layout class="QGridLayout" name="arraySizeLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="minSizeLabel">
+          <property name="text">
+           <string>Минимальный размер:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="minSizeSpin">
+          <property name="minimum">
+           <number>100</number>
+          </property>
+          <property name="maximum">
+           <number>1000000</number>
+          </property>
+          <property name="value">
+           <number>1000</number>
+          </property>
+          <property name="suffix">
+           <string> эл.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="maxSizeLabel">
+          <property name="text">
+           <string>Максимальный размер:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="maxSizeSpin">
+          <property name="minimum">
+           <number>1000</number>
+          </property>
+          <property name="maximum">
+           <number>100000000</number>
+          </property>
+          <property name="value">
+           <number>10000000</number>
+          </property>
+          <property name="suffix">
+           <string> эл.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="stepLabel">
+          <property name="text">
+           <string>Шаг увеличения:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="stepCombo">
+          <item>
+           <property name="text">
+            <string>Логарифмический (×2)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Линейный (×1.5)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Фиксированный (+1M)</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Количество прогонов -->
+      <widget class="QGroupBox" name="runsGroup">
+       <property name="title">
+        <string>Количество прогонов</string>
+       </property>
+       <layout class="QHBoxLayout" name="runsLayout">
+        <item>
+         <widget class="QSpinBox" name="runsSpin">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>5</number>
+          </property>
+          <property name="suffix">
+           <string> раз(а)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="discardOutliersCheck">
+          <property name="text">
+           <string>Отбрасывать выбросы (мин/макс)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="runsSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Типы данных -->
+      <widget class="QGroupBox" name="dataTypeGroup">
+       <property name="title">
+        <string>Типы данных для тестирования</string>
+       </property>
+       <layout class="QGridLayout" name="dataTypeLayout">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="int32Check">
+          <property name="text">
+           <string>int32_t</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="int64Check">
+          <property name="text">
+           <string>int64_t</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="floatCheck">
+          <property name="text">
+           <string>float</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="doubleCheck">
+          <property name="text">
+           <string>double</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <item>
+       <spacer name="benchmarkSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+
+    <!-- Вкладка 3: GPU настройки -->
+    <widget class="QWidget" name="gpuTab">
+     <attribute name="title">
+      <string>GPU (CUDA)</string>
+     </attribute>
+     <layout class="QVBoxLayout" name="gpuLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+
+      <!-- Информация об устройстве -->
+      <widget class="QGroupBox" name="deviceInfoGroup">
+       <property name="title">
+        <string>Текущее CUDA устройство</string>
+       </property>
+       <layout class="QFormLayout" name="deviceInfoLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="deviceNameLabel">
+          <property name="text">
+           <string>Устройство:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="deviceNameValue">
+          <property name="text">
+           <string>Не определено</string>
+          </property>
+          <property name="textInteractionFlags">
+           <set>Qt::TextSelectableByMouse</set>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="computeCapLabel">
+          <property name="text">
+           <string>Вычислительная способность:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="computeCapValue">
+          <property name="text">
+           <string>-.-</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="globalMemLabel">
+          <property name="text">
+           <string>Глобальная память:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="globalMemValue">
+          <property name="text">
+           <string>- MB</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="sharedMemLabel">
+          <property name="text">
+           <string>Shared memory на блок:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="sharedMemValue">
+          <property name="text">
+           <string>- KB</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Выбор устройства -->
+      <widget class="QGroupBox" name="deviceSelectGroup">
+       <property name="title">
+        <string>Выбор GPU устройства</string>
+       </property>
+       <layout class="QHBoxLayout" name="deviceSelectLayout">
+        <item>
+         <widget class="QLabel" name="deviceSelectLabel">
+          <property name="text">
+           <string>Устройство:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="deviceSelectCombo">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="refreshDevicesBtn">
+          <property name="text">
+           <string>Обновить список</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../resources/resources.qrc">
+            <normaloff>:/icons/refresh.png</normaloff>
+           </iconset>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="deviceSelectSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Параметры CUDA -->
+      <widget class="QGroupBox" name="cudaParamsGroup">
+       <property name="title">
+        <string>Параметры выполнения CUDA</string>
+       </property>
+       <layout class="QGridLayout" name="cudaParamsLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="blockSizeLabel">
+          <property name="text">
+           <string>Размер блока (threads):</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="blockSizeSpin">
+          <property name="minimum">
+           <number>32</number>
+          </property>
+          <property name="maximum">
+           <number>1024</number>
+          </property>
+          <property name="value">
+           <number>256</number>
+          </property>
+          <property name="singleStep">
+           <number>32</number>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="streamsLabel">
+          <property name="text">
+           <string>Количество CUDA streams:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="streamsSpin">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>32</number>
+          </property>
+          <property name="value">
+           <number>4</number>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="syncLabel">
+          <property name="text">
+           <string>Режим синхронизации:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QComboBox" name="syncCombo">
+          <item>
+           <property name="text">
+            <string>Блокирующий (cudaDeviceSynchronize)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Неблокирующий (events)</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Опции -->
+      <widget class="QCheckBox" name="useUnifiedMemoryCheck">
+       <property name="text">
+        <string>Использовать унифицированную память (managed memory)</string>
+       </property>
+      </widget>
+
+      <widget class="QCheckBox" name="enablePeerAccessCheck">
+       <property name="text">
+        <string>Включить Peer-to-Peer доступ между GPU (если доступно)</string>
+       </property>
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+      </widget>
+
+      <item>
+       <spacer name="gpuSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+
+    <!-- Вкладка 4: Экспорт и логирование -->
+    <widget class="QWidget" name="exportTab">
+     <attribute name="title">
+      <string>Экспорт и логи</string>
+     </attribute>
+     <layout class="QVBoxLayout" name="exportLayout">
+      <property name="spacing">
+       <number>12</number>
+      </property>
+
+      <!-- Группа: Форматы экспорта -->
+      <widget class="QGroupBox" name="exportFormatGroup">
+       <property name="title">
+        <string>Форматы экспорта результатов</string>
+       </property>
+       <layout class="QVBoxLayout" name="exportFormatLayout">
+        <item>
+         <widget class="QCheckBox" name="exportCsvCheck">
+          <property name="text">
+           <string>CSV (для Excel, LibreOffice)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="exportJsonCheck">
+          <property name="text">
+           <string>JSON (для программной обработки)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="exportMarkdownCheck">
+          <property name="text">
+           <string>Markdown (для отчётов, README)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="exportHtmlCheck">
+          <property name="text">
+           <string>HTML (веб-отчёт с графиками)</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Путь экспорта -->
+      <widget class="QGroupBox" name="exportPathGroup">
+       <property name="title">
+        <string>Папка для экспорта</string>
+       </property>
+       <layout class="QHBoxLayout" name="exportPathLayout">
+        <item>
+         <widget class="QLineEdit" name="exportPathEdit">
+          <property name="placeholderText">
+           <string>По умолчанию: ~/SortBenchResults</string>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="browseExportBtn">
+          <property name="text">
+           <string>Обзор...</string>
+          </property>
+          <property name="icon">
+           <iconset resource="../resources/resources.qrc">
+            <normaloff>:/icons/folder.png</normaloff>
+           </iconset>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Группа: Уровень логирования -->
+      <widget class="QGroupBox" name="logLevelGroup">
+       <property name="title">
+        <string>Уровень логирования</string>
+       </property>
+       <layout class="QHBoxLayout" name="logLevelLayout">
+        <item>
+         <widget class="QComboBox" name="logLevelCombo">
+          <item>
+           <property name="text">
+            <string>DEBUG - Подробный (все операции)</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>INFO - Информационный (по умолчанию)</string>
+           </property>
+          </item>
+          <item selected="true">
+           <property name="text">
+            <string>WARNING - Предупреждения</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>ERROR - Только ошибки</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>CRITICAL - Критические ошибки</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item>
+         <spacer name="logLevelSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+
+      <!-- Опции логирования -->
+      <widget class="QCheckBox" name="logToFileCheck">
+       <property name="text">
+        <string>Записывать логи в файл (sortbench.log)</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+
+      <widget class="QCheckBox" name="logTimestampCheck">
+       <property name="text">
+        <string>Добавлять метки времени в логи</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+
+      <widget class="QCheckBox" name="autoExportCheck">
+       <property name="text">
+        <string>Автоматически экспортировать результаты после бенчмарка</string>
+       </property>
+      </widget>
+
+      <item>
+       <spacer name="exportSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+
+   <!-- Кнопки управления -->
+   <widget class="QDialogButtonBox" name="buttonBox">
+    <property name="orientation">
+     <enum>Qt::Horizontal</enum>
+    </property>
+    <property name="standardButtons">
+     <set>QDialogButtonBox::Ok|QDialogButtonBox::Cancel|QDialogButtonBox::Apply|QDialogButtonBox::RestoreDefaults</set>
+    </property>
+    <property name="centerButtons">
+     <bool>false</bool>
+    </property>
+   </widget>
+  </layout>
+ </widget>
+
+ <resources>
+  <include source="../resources/resources.qrc"/>
+ </resources>
+
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>SettingsDialog</receiver>
+   <slot>accept()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>SettingsDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
