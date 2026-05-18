@@ -65,9 +65,9 @@ void Logger::initialize() {
     
     if (m_logFile->open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         if (m_logFile->size() == 0) {
-            log(LogLevel::Info, "=== SortBench Session Started ===");
+            log(Level::Info, "=== SortBench Session Started ===");
         } else {
-            log(LogLevel::Info, "=== Log Continued ===");
+            log(Level::Info, "=== Log Continued ===");
         }
     } else {
         std::cerr << "Failed to open log file: " << fileName.toStdString() << std::endl;

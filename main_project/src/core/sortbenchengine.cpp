@@ -415,9 +415,12 @@ void SortBenchEngine::verifyResults() {
     // Проверка CPU результата
     switch (m_currentParams.dataType) {
         case DataType::Int32:
-            m_partialResult.isSorted = ArrayGenerator<int32_t>::isSorted(
-                *reinterpret_cast<const std::vector<int32_t>*>(
-                    static_cast<const void*>(&m_cpuResult)));
+           {
+    size_t n = m_currentParams.arraySize;
+    std::vector<int32_t> typed(n);
+    std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(int32_t));
+    m_partialResult.isSorted = ArrayGenerator<int32_t>::isSorted(typed);
+}
             break;
         case DataType::Int64:
             m_partialResult.isSorted = ArrayGenerator<int64_t>::isSorted(

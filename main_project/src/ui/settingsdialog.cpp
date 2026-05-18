@@ -40,7 +40,7 @@ SettingsDialog::SettingsDialog(QWidget* parent)
         saveToSettings();
         accept();
     });
-    connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialogDialog::reject);
+connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(m_applyButton, &QPushButton::clicked, this, &SettingsDialog::onApplyClicked);
     connect(m_resetButton, &QPushButton::clicked, this, &SettingsDialog::onResetClicked);
     

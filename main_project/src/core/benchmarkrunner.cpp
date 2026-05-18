@@ -5,15 +5,7 @@
 
 namespace SortBench {
 
-struct BatchConfig {
-    QList<CpuAlgorithm> cpuAlgorithms;
-    QList<GpuAlgorithm> gpuAlgorithms;
-    QList<int> arraySizes;
-    QList<DataType> dataTypes;
-    QList<Distribution> distributions;
-    int repeatCount = 3;
-    bool randomizeOrder = false;
-};
+
 
 class BenchmarkRunner::Private {
 public:

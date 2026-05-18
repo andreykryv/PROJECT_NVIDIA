@@ -92,11 +92,12 @@ bool CsvExporter::exportMarkdownTable(const QList<BenchmarkResult> &results, con
 
     // Данные
     for (const auto &result : results) {
-        QString algo = result.algorithmName;
-        QString size = QString::number(result.arraySize);
-        QString dist = toString(result.distribution);
-        QString cpuTime = result.cpuTimeMs >= 0 ? QString::number(result.cpuTimeMs, 'f', 3) : "N/A";
-        QString gpuTime = result.gpuTimeMs >= 0 ? QString::number(result.gpuTimeMs, 'f', 3) : "N/A";
+     QString algo = toString(result.params.cpuAlgorithm) + " / " +
+               toString(result.params.gpuAlgorithm);
+QString size = QString::number(result.params.arraySize);
+QString dist = toString(result.params.distribution);
+QString gpuTime = result.gpuTotalTimeMs >= 0
+                  ? QString::number(result.gpuTotalTimeMs, 'f', 3) : "N/A";
         
         QString speedup = "N/A";
         if (result.cpuTimeMs > 0 && result.gpuTimeMs > 0) {
@@ -138,10 +139,8 @@ QList<BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
 
         QStringList fields = parseCsvLine(line);
         if (fields.size() >= BenchmarkResult::csvHeaders().size()) {
-            BenchmarkResult result = BenchmarkResult::fromCsvRow(fields);
-            if (result.isValid()) {
-                results.append(result);
-            }
+            
+           
         }
     }
 

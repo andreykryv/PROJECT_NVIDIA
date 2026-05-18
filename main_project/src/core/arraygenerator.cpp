@@ -4,8 +4,7 @@
 namespace SortBench {
 
 // Explicit template instantiations for all supported types
-template class ArrayGenerator<int32_t>;
-template class ArrayGenerator<int64_t>;
+
 template class ArrayGenerator<float>;
 template class ArrayGenerator<double>;
 

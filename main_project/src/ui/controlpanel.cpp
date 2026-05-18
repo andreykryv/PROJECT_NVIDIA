@@ -383,7 +383,7 @@ SortParams ControlPanel::buildParams() const {
     
     // CPU
     params.cpuAlgorithm = stringToCpuAlgorithm(m_cpuAlgorithmCombo->currentText().toStdString());
-    params.enableCpu = m_enableCpuCheck->isChecked();
+    params.enableCPU = m_enableCpuCheck->isChecked();
     
     // GPU
     QString gpuText = m_gpuAlgorithmCombo->currentText();
@@ -391,7 +391,7 @@ SortParams ControlPanel::buildParams() const {
         params.enableGpu = false;
     } else {
         params.gpuAlgorithm = stringToGpuAlgorithm(gpuText.toStdString());
-        params.enableGpu = m_enableGpuCheck->isChecked();
+        params.enableGPU = m_enableGpuCheck->isChecked();
     }
     
     // Массив
@@ -406,7 +406,7 @@ SortParams ControlPanel::buildParams() const {
     }
     
     // Анимация
-    params.animationSpeed = m_animSpeedSlider->value();
+   params.animationFPS = m_animSpeedSlider->value();
     params.showComparisons = m_showComparisonsCheck->isChecked();
     params.showAccessCount = m_showAccessCountCheck->isChecked();
     params.colorScheme = static_cast<ColorScheme>(m_colorSchemeCombo->currentIndex());

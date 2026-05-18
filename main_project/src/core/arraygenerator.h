@@ -239,11 +239,8 @@ public:
     }
 };
 
-// Explicit template instantiations
-extern template class ArrayGenerator<int32_t>;
-extern template class ArrayGenerator<int64_t>;
-extern template class ArrayGenerator<float>;
-extern template class ArrayGenerator<double>;
+
+
 
 } // namespace SortBench
 

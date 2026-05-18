@@ -166,7 +166,9 @@ private:
     void closeEvent(QCloseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
-
+private:
+    void updateGPUInfo();   // вызывается в конструкторе MainWindow
+    QAction *m_themeAction = nullptr;  // используется в setupMenuBar() и onThemeToggle()
 private:
     Ui::MainWindow *ui = nullptr;
     

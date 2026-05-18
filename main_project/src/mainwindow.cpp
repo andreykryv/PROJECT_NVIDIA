@@ -399,8 +399,8 @@ void MainWindow::onBenchmarkFinished(const BenchmarkResult &result)
     statsPanel->addResult(result);
     
     QString message;
-    if (result.hasGpuTime && result.gpuTimeMs > 0) {
-        double speedup = result.cpuTimeMs / result.gpuTimeMs;
+ if (result.gpuTotalTimeMs > 0.0) {
+    double speedup = result.cpuTimeMs / result.gpuTotalTimeMs;
         message = tr("Готово. CPU: %1 мс, GPU: %2 мс, ускорение: %3x")
             .arg(result.cpuTimeMs, 0, 'f', 2)
             .arg(result.gpuTimeMs, 0, 'f', 2)

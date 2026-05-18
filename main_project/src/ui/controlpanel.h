@@ -59,42 +59,42 @@ private:
     int sizeToLogScale(int size) const;
 
     // Algorithm section
-    QGroupBox *algorithmGroup;
-    QComboBox *cpuAlgorithmCombo;
-    QComboBox *gpuAlgorithmCombo;
-    QCheckBox *enableCpuCheck;
-    QCheckBox *enableGpuCheck;
-    QPushButton *algoInfoBtn;
+    QGroupBox *m_algorithmGroup;
+    QComboBox *m_cpuAlgorithmCombo;
+    QComboBox *m_gpuAlgorithmCombo;
+    QCheckBox *m_enableCpuCheck;
+    QCheckBox *m_enableGpuCheck;
+    QPushButton *m_algoInfoBtn;
 
     // Array section
-    QGroupBox *arrayGroup;
-    QSpinBox *arraySizeSpinBox;
-    QSlider *arraySizeSlider;
-    QComboBox *dataTypeCombo;
-    QComboBox *distributionCombo;
-    QSpinBox *randomSeedSpin;
-    QCheckBox *autoSeedCheck;
+    QGroupBox *m_arrayGroup;
+    QSpinBox *m_arraySizeSpinBox;
+    QSlider *m_arraySizeSlider;
+    QComboBox *m_dataTypeCombo;
+    QComboBox *m_distributionCombo;
+    QSpinBox *m_randomSeedSpin;
+    QCheckBox *m_autoSeedCheck;
 
     // Animation section
-    QGroupBox *animationGroup;
-    QSlider *animSpeedSlider;
-    QLabel *animSpeedLabel;
-    QCheckBox *showComparisonsCheck;
-    QCheckBox *showAccessCountCheck;
-    QComboBox *colorSchemeCombo;
-    QSpinBox *maxVisElementsSpin;
+    QGroupBox *m_animationGroup;
+    QSlider *m_animSpeedSlider;
+    QLabel *m_animSpeedLabel;
+    QCheckBox *m_showComparisonsCheck;
+    QCheckBox *m_showAccessCountCheck;
+    QComboBox *m_colorSchemeCombo;
+    QSpinBox *m_maxVisElementsSpin;
 
     // Batch section
-    QGroupBox *batchGroup;
-    QCheckBox *batchModeCheck;
-    QPushButton *configureBatchBtn;
-    QLabel *batchStatusLabel;
+    QGroupBox *m_batchGroup;
+    QCheckBox *m_batchModeCheck;
+    QPushButton *m_configureBatchBtn;
+    QLabel *m_batchStatusLabel;
 
     // Control buttons
-    QPushButton *runBtn;
-    QPushButton *stopBtn;
-    QPushButton *pauseResumeBtn;
-    QPushButton *resetBtn;
+    QPushButton *m_runBtn;
+    QPushButton *m_stopBtn;
+    QPushButton *m_pauseResumeBtn;
+    QPushButton *m_resetBtn;
 
     // State
     bool m_running;

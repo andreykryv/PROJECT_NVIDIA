@@ -95,8 +95,10 @@ void AlgorithmsModel::setEnabledAlgorithms(const QSet<QString> &enabled)
 void AlgorithmsModel::reloadAlgorithms()
 {
     m_algorithms.clear();
-    auto registry = AlgorithmRegistry::instance();
-    auto allAlgos = registry->getAllAlgorithms();
+   auto& registry = AlgorithmRegistry::instance();
+QList<AlgorithmInfo> allAlgos;
+for (const auto& a : registry.allCpuAlgorithms()) allAlgos.append(a);
+for (const auto& a : registry.allGpuAlgorithms()) allAlgos.append(a);
     
     for (const auto &algo : allAlgos) {
         bool isCpu = algo.type == "CPU";

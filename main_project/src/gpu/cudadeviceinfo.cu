@@ -31,8 +31,8 @@ CudaDeviceProperties CudaDeviceInfo::getProperties(int deviceIndex) {
     
     props.name = QString::fromUtf8(prop.name);
     props.index = deviceIndex;
-    props.computeCapabilityMaj = prop.major;
-    props.computeCapabilityMin = prop.minor;
+   props.computeCapabilityMajor = prop.major;
+props.computeCapabilityMinor = prop.minor;
     props.multiprocessorCount = prop.multiProcessorCount;
     props.maxThreadsPerBlock = prop.maxThreadsPerBlock;
     props.warpSize = prop.warpSize;

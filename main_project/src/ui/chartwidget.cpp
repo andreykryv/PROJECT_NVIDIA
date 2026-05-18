@@ -205,7 +205,7 @@ void ChartWidget::updateSpeedupChart() {
     for (auto it = bySize.begin(); it != bySize.end(); ++it) {
         int size = it.key();
         for (const auto *res : it.value()) {
-            QString algoName = res->algorithmName;
+            QString algoName = toString(res->params.cpuAlgorithm);
             
             if (!algoSeries.contains(algoName)) {
                 algoSeries[algoName] = new QLineSeries();
@@ -283,7 +283,7 @@ void ChartWidget::updateGPUDetailChart() {
     if (axisX) {
         axisX->clear();
         for (const auto *res : gpuResults) {
-            axisX->append(res->algorithmName.left(15));
+            axisX->append(toString(res->params.cpuAlgorithm).left(15));
         }
     }
 }

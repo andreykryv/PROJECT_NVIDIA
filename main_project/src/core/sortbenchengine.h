@@ -5,7 +5,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QElapsedTimer>
-#include <QAtomicBool>
+#include <QAtomicInteger>
 #include <QPointer>
 #include <vector>
 #include <memory>

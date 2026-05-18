@@ -21,14 +21,7 @@ struct GpuTimings {
 };
 
 // Forward declarations for CUDA kernels (defined in .cu files)
-template<typename T>
-__global__ void bitonicSortKernel(T* input, T* output, int size);
 
-template<typename T>
-__global__ void thrustRadixSortKernel(T* input, T* output, int size);
-
-template<typename T>
-__global__ void gpuQuickSortKernel(T* input, T* output, int size);
 
 class CudaSorter : public QObject {
     Q_OBJECT
