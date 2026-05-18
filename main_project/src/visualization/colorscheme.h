@@ -1,41 +1,66 @@
-////////////////////////////////////////////////////////////////////////////////
-// visualization/colorscheme.h — цветовые схемы для визуализации
-//
-// НАЗНАЧЕНИЕ:
-//   ColorScheme определяет, как значение элемента массива [0..1] отображается
-//   в цвет столбца на экране. Разные схемы подходят для разных целей.
-//
-// БАЗОВЫЙ КЛАСС: ColorScheme (абстрактный)
-//   virtual QColor getColor(float normalizedValue, int index, ElementState state) = 0
-//   virtual QString name() const = 0
-//
-// ПРОИЗВОДНЫЕ КЛАССЫ:
-//
-//   RainbowScheme:
-//     Цвет по HSV: hue = value * 240 (от красного до синего).
-//     Самый наглядный: порядок в массиве виден как цветовой градиент.
-//     Отсортированный массив выглядит как плавная радуга.
-//
-//   HeatmapScheme:
-//     Цвет по тепловой карте: синий (холодно, малые значения) →
-//     зелёный → жёлтый → красный (горячо, большие значения).
-//     Подходит для анализа распределения значений.
-//
-//   MonochromeScheme:
-//     Оттенки серого от белого (малые) до чёрного (большие).
-//     Минималистичный вид, хорошо печатается.
-//
-//   StatusColorsScheme:
-//     Все элементы одного цвета (серый/синий).
-//     Подсветки полностью определяют цвет: COMPARE=жёлтый, SWAP=красный,
-//     SORTED=зелёный. Фокус на действиях, а не значениях.
-//
-// ПЕРЕЧИСЛЕНИЕ ElementState:
-//   Normal, Comparing, Swapping, Pivot, Sorted, Writing
-//
-// ФАБРИЧНЫЙ МЕТОД:
-//   static ColorScheme* create(ColorScheme type)
-//
-// НАСТРОЙКА ЯРКОСТИ:
-//   void setBrightness(float b)  — для адаптации под светлую/тёмную тему.
-////////////////////////////////////////////////////////////////////////////////
+#ifndef COLORSCHEME_H
+#define COLORSCHEME_H
+
+#include <QColor>
+#include <QString>
+
+namespace SortBench {
+
+enum class ElementState {
+    Normal,
+    Comparing,
+    Swapping,
+    Pivot,
+    Sorted,
+    Writing
+};
+
+enum class ColorSchemeType {
+    Rainbow,
+    Heatmap,
+    Monochrome,
+    StatusColors
+};
+
+class ColorScheme {
+public:
+    virtual ~ColorScheme() = default;
+    
+    virtual QColor getColor(float normalizedValue, int index, ElementState state) = 0;
+    virtual QString name() const = 0;
+    void setBrightness(float b) { m_brightness = b; }
+    float brightness() const { return m_brightness; }
+    
+    static ColorScheme* create(ColorSchemeType type);
+
+protected:
+    float m_brightness = 1.0f;
+};
+
+class RainbowScheme : public ColorScheme {
+public:
+    QColor getColor(float normalizedValue, int index, ElementState state) override;
+    QString name() const override { return "Радуга"; }
+};
+
+class HeatmapScheme : public ColorScheme {
+public:
+    QColor getColor(float normalizedValue, int index, ElementState state) override;
+    QString name() const override { return "Тепловая карта"; }
+};
+
+class MonochromeScheme : public ColorScheme {
+public:
+    QColor getColor(float normalizedValue, int index, ElementState state) override;
+    QString name() const override { return "Монохром"; }
+};
+
+class StatusColorsScheme : public ColorScheme {
+public:
+    QColor getColor(float normalizedValue, int index, ElementState state) override;
+    QString name() const override { return "Статусные цвета"; }
+};
+
+} // namespace SortBench
+
+#endif // COLORSCHEME_H
