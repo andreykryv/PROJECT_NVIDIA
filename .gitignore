@@ -2,32 +2,21 @@
 # Compiled and build artifacts
 *.o
 *.obj
+*.out
 *.exe
 *.dll
 *.so
 *.a
-*.out
 
 # Dependencies
 venv/
 .venv/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 .mypy_cache/
 .pytest_cache/
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Editors
-.vscode/
-.idea/
 
 # Build directories
 build/
@@ -35,8 +24,32 @@ dist/
 target/
 .gradle/
 
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and temp files
+*.log
+*.tmp
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env.*
+
 # Coverage
 coverage/
 htmlcov/
 .coverage
+
+# CUDA/GPU specific
+*.cu.o
+*.fatbin
+*.ptx
 ```

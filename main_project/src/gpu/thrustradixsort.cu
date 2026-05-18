@@ -1,15 +1,19 @@
-////////////////////////////////////////////////////////////////////////////////
-// gpu/thrustradixsort.cu — реализация Thrust/CUB Radix Sort (компилируется nvcc)
-//
-// СОДЕРЖИМОЕ:
-//   sort<T>():
-//     Выделяет временный буфер d_temp через DeviceBuffer<uint8_t>.
-//     Первый вызов SortKeys с nullptr: запрашивает размер temp_bytes.
-//     Второй вызов с реальным буфером: выполняет сортировку.
-//     cudaStreamSynchronize(stream) + замер времени.
-//   Явные инстанции: int32_t, int64_t, float, double.
-//
-// ОПТИМИЗАЦИИ:
-//   — Кэшируем temp_bytes между вызовами для одинакового размера.
-//   — Используем pinned memory для быстрого H2D при usePinnedMemory == true.
-////////////////////////////////////////////////////////////////////////////////
+#include <cuda_runtime.h>
+#include <thrust/device_ptr.h>
+#include <thrust/sort.h>
+#include <thrust/execution_policy.h>
+
+// Wrapper функция для Thrust Radix Sort
+template<typename T>
+void thrustRadixSortWrapper(T* d_data, int size, cudaStream_t stream) {
+    thrust::device_ptr<T> dev_ptr(d_data);
+    
+    // Используем thrust::sort с execution policy для стрима
+    thrust::sort(thrust::cuda::par.on(stream), dev_ptr, dev_ptr + size);
+}
+
+// Явные инстанции
+template void thrustRadixSortWrapper<int32_t>(int32_t*, int, cudaStream_t);
+template void thrustRadixSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
+template void thrustRadixSortWrapper<float>(float*, int, cudaStream_t);
+template void thrustRadixSortWrapper<double>(double*, int, cudaStream_t);
