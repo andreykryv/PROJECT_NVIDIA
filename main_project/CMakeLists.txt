@@ -60,7 +60,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # Сначала проверяем опции до объявления проекта
-option(ENABLE_CUDA "Включить поддержку CUDA" ON)
+option(ENABLE_CUDA "Включить поддержку CUDA" OFF)
 
 if(ENABLE_CUDA)
     project(SortBench VERSION 1.0.0 LANGUAGES CXX CUDA)
@@ -86,7 +86,7 @@ option(SORTBENCH_DEBUG_ANIMATION "Подробное логирование ан
 set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный размер массива")
 
 # Поиск Qt (предпочтение Qt6, затем Qt5)
-set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6;/usr/lib/x86_64-linux-gnu/cmake")
+set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake;/usr")
 find_package(Qt6 COMPONENTS Widgets Charts Concurrent Svg QUIET)
 if(NOT Qt6_FOUND)
     message(FATAL_ERROR "Qt6 not found. Please install qt6-base-dev and qt6-charts-dev")

@@ -39,13 +39,16 @@ struct GpuTimings {
 // Кадр визуализации
 struct VisFrame {
     std::vector<float> normalizedValues;  // значения в [0, 1]
+    std::vector<float> values;            // алиас для обратной совместимости
     QList<int> highlightedIdx;             // индексы сравниваемых элементов
     HighlightType highlightType;           // тип подсветки
     long long comparisons;                 // счётчик сравнений
     long long swaps;                       // счётчик перестановок
+    long long arrayAccesses;               // счётчик обращений к массиву
     int totalElements;                     // всего элементов
+    QString algoName;                      // имя алгоритма
 
-    VisFrame() : highlightType(HighlightType::None), comparisons(0), swaps(0), totalElements(0) {}
+    VisFrame() : highlightType(HighlightType::None), comparisons(0), swaps(0), arrayAccesses(0), totalElements(0) {}
 };
 
 class SortBenchEngine : public QObject {

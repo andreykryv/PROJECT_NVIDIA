@@ -13,6 +13,7 @@ enum class HighlightType {
     Swap,
     Sorted,
     Pivot,
+        Write,
     None
 };
 

@@ -18,20 +18,20 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMouseTracking(true);
-    
+
     // Настройка таймера анимации
     connect(animTimer, &QTimer::timeout, this, &VisualizationWidget::processNextFrame);
     setAnimationSpeed(60);
-    
+
     // Настройка overlay-метки
     overlayStatsLabel->setStyleSheet(
         "background-color: rgba(0,0,0,120); color: white; "
         "padding: 5px; border-radius: 3px; font-size: 11px;"
     );
     overlayStatsLabel->hide();
-    
+
     // Цветовая схема по умолчанию
-    colorScheme = new ColorScheme(this);
+    colorScheme = new RainbowScheme();
 }
 
 VisualizationWidget::~VisualizationWidget() {
@@ -41,7 +41,7 @@ VisualizationWidget::~VisualizationWidget() {
 void VisualizationWidget::setAnimationSpeed(int fps) {
     animationSpeedFPS = fps;
     isStepMode = (fps == 0);
-    
+
     if (!isStepMode && !isPaused) {
         animTimer->setInterval(1000 / fps);
         animTimer->start();
@@ -99,7 +99,7 @@ void VisualizationWidget::stepForward() {
 void VisualizationWidget::renderFrame(const VisFrame& frame) {
     frameQueue.enqueue(frame);
     isReceivingFrames = true;
-    
+
     if (!overlayStatsLabel->isVisible()) {
         overlayStatsLabel->show();
     }
@@ -112,14 +112,14 @@ void VisualizationWidget::processNextFrame() {
         }
         return;
     }
-    
+
     if (isStepMode && !isPaused) {
         return; // Ждём явного шага
     }
-    
+
     nextFrame = frameQueue.dequeue();
     interpolationT = 0.0f;
-    
+
     // Запуск интерполяции
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
     if (lastFrameTime > 0) {
@@ -127,57 +127,57 @@ void VisualizationWidget::processNextFrame() {
         emit fpsUpdated(actualFPS);
     }
     lastFrameTime = currentTime;
-    
+
     update();
     emit frameRendered(frameIndex++);
 }
 
 void VisualizationWidget::paintEvent(QPaintEvent *event) {
     Q_UNUSED(event);
-    
+
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-    
+
     drawGradientBackground(painter);
-    
-    if (!currentFrame.values.empty()) {
+
+    if (!currentFrame.normalizedValues.empty()) {
         drawBars(painter, currentFrame);
         drawHighlights(painter, currentFrame);
     }
-    
+
     drawOverlay(painter);
 }
 
 void VisualizationWidget::drawBars(QPainter &painter, const VisFrame &frame) {
-    if (frame.values.empty()) return;
-    
+    if (frame.normalizedValues.empty()) return;
+
     int padding = 10;
     int topMargin = 20;
     int bottomMargin = 30;
-    
+
     int availableWidth = width() - 2 * padding;
     int availableHeight = height() - topMargin - bottomMargin;
-    
-    int numElements = static_cast<int>(frame.values.size());
+
+    int numElements = static_cast<int>(frame.normalizedValues.size());
     int visibleElements = static_cast<int>(numElements / zoomFactor);
     visibleElements = qMax(1, qMin(visibleElements, maxColumns));
-    
+
     int barWidth = calculateBarWidth();
     int gap = qMax(0, (availableWidth / visibleElements) - barWidth);
-    
+
     painter.setPen(Qt::NoPen);
-    
+
     for (int i = scrollOffset; i < qMin(scrollOffset + visibleElements, numElements); ++i) {
-        float value = frame.values[i];
+        float value = frame.normalizedValues[i];
         int barHeight = static_cast<int>(value * availableHeight);
-        
+
         int x = padding + (i - scrollOffset) * (barWidth + gap);
         int y = height() - bottomMargin - barHeight;
-        
-        QColor color = colorScheme ? 
-            colorScheme->getColor(value, i, HighlightType::None) : 
+
+        QColor color = colorScheme ?
+            colorScheme->getColor(value, i, ElementState::Normal) :
             QColor::fromHsvF(value, 1.0, 1.0);
-        
+
         painter.setBrush(color);
         painter.drawRect(x, y, barWidth, barHeight);
     }
@@ -185,14 +185,14 @@ void VisualizationWidget::drawBars(QPainter &painter, const VisFrame &frame) {
 
 void VisualizationWidget::drawHighlights(QPainter &painter, const VisFrame &frame) {
     if (frame.highlightedIdx.empty()) return;
-    
+
     int padding = 10;
     int bottomMargin = 30;
     int availableHeight = height() - 20 - bottomMargin;
-    
+
     int barWidth = calculateBarWidth();
-    int gap = qMax(0, (width() - 2 * padding) / qMin(static_cast<int>(frame.values.size()), maxColumns) - barWidth);
-    
+    int gap = qMax(0, (width() - 2 * padding) / qMin(static_cast<int>(frame.normalizedValues.size()), maxColumns) - barWidth);
+
     // Цвет подсветки по типу
     QColor highlightColor;
     switch (frame.highlightType) {
@@ -203,23 +203,23 @@ void VisualizationWidget::drawHighlights(QPainter &painter, const VisFrame &fram
         case HighlightType::Write:   highlightColor = QColor(255, 165, 0); break;   // Оранжевый
         default: return;
     }
-    
+
     // Мигание
     float alpha = 0.7f + 0.3f * std::sin(QDateTime::currentMSecsSinceEpoch() / 100.0);
     highlightColor.setAlphaF(alpha);
-    
+
     painter.setPen(Qt::NoPen);
     painter.setBrush(highlightColor);
-    
+
     for (int idx : frame.highlightedIdx) {
         if (idx < scrollOffset || idx >= scrollOffset + maxColumns) continue;
-        
-        float value = frame.values[idx];
+
+        float value = frame.normalizedValues[idx];
         int barHeight = static_cast<int>(value * availableHeight);
-        
+
         int x = 10 + (idx - scrollOffset) * (barWidth + gap);
         int y = height() - bottomMargin - barHeight;
-        
+
         painter.drawRect(x, y, barWidth, barHeight);
     }
 }
@@ -231,17 +231,17 @@ void VisualizationWidget::drawOverlay(QPainter &painter) {
      .arg(currentFrame.comparisons)
      .arg(currentFrame.swaps)
      .arg(currentFrame.arrayAccesses);
-    
+
     overlayStatsLabel->setText(statsText);
     overlayStatsLabel->adjustSize();
     overlayStatsLabel->move(10, 10);
-    
+
     // FPS и очередь в правом верхнем углу
     QString fpsText = QString("FPS: %1 | Элементов: %2 | Очередь: %3")
         .arg(animationSpeedFPS)
-        .arg(currentFrame.values.size())
+        .arg(currentFrame.normalizedValues.size())
         .arg(frameQueue.size());
-    
+
     painter.setPen(QColor(200, 200, 200));
     painter.setFont(QFont("Arial", 10));
     painter.drawText(width() - 200, 20, fpsText);
@@ -260,17 +260,17 @@ void VisualizationWidget::interpolateFrames() {
         interpolationT = 1.0f;
         return;
     }
-    
+
     interpolationT += animationSpeedFPS / 1000.0f;
     interpolationT = qMin(1.0f, interpolationT);
-    
+
     // Линейная интерполяция значений
-    if (!currentFrame.values.empty() && !nextFrame.values.empty()) {
-        size_t n = qMin(currentFrame.values.size(), nextFrame.values.size());
+    if (!currentFrame.normalizedValues.empty() && !nextFrame.normalizedValues.empty()) {
+        size_t n = qMin(currentFrame.normalizedValues.size(), nextFrame.normalizedValues.size());
         for (size_t i = 0; i < n; ++i) {
-            currentFrame.values[i] = 
-                currentFrame.values[i] * (1.0f - interpolationT) +
-                nextFrame.values[i] * interpolationT;
+            currentFrame.normalizedValues[i] =
+                currentFrame.normalizedValues[i] * (1.0f - interpolationT) +
+                nextFrame.normalizedValues[i] * interpolationT;
         }
     }
 }
@@ -278,49 +278,49 @@ void VisualizationWidget::interpolateFrames() {
 int VisualizationWidget::calculateBarWidth() const {
     int padding = 10;
     int availableWidth = width() - 2 * padding;
-    int visibleElements = qMin(maxColumns, static_cast<int>(currentFrame.values.size() / zoomFactor));
-    
+    int visibleElements = qMin(maxColumns, static_cast<int>(currentFrame.normalizedValues.size() / zoomFactor));
+
     if (visibleElements <= 0) return 1;
-    
+
     int barWidth = availableWidth / visibleElements;
     return qMax(1, qMin(barWidth, 50));
 }
 
 void VisualizationWidget::mouseMoveEvent(QMouseEvent *event) {
-    if (currentFrame.values.empty()) return;
-    
+    if (currentFrame.normalizedValues.empty()) return;
+
     int padding = 10;
     int barWidth = calculateBarWidth();
     int gap = 1;
-    
-    int idx = (event->x() - padding) / (barWidth + gap);
+
+    int idx = (event->position().x() - padding) / (barWidth + gap);
     idx += scrollOffset;
-    
-    if (idx >= 0 && idx < static_cast<int>(currentFrame.values.size())) {
+
+    if (idx >= 0 && idx < static_cast<int>(currentFrame.normalizedValues.size())) {
         QString tooltip = QString("Индекс: %1\nЗначение: %2\nПозиция: %3")
             .arg(idx)
-            .arg(currentFrame.values[idx], 0, 'f', 4)
+            .arg(currentFrame.normalizedValues[idx], 0, 'f', 4)
             .arg(idx);
-        QToolTip::showText(event->globalPos(), tooltip, this);
+        QToolTip::showText(event->globalPosition().toPoint(), tooltip, this);
     } else {
         QToolTip::hideText();
     }
-    
+
     QWidget::mouseMoveEvent(event);
 }
 
 void VisualizationWidget::wheelEvent(QWheelEvent *event) {
     double delta = event->angleDelta().y();
-    
+
     if (delta > 0) {
         zoomFactor *= 1.1;
     } else {
         zoomFactor /= 1.1;
     }
-    
+
     zoomFactor = qBound(1.0, zoomFactor, 50.0);
     update();
-    
+
     QWidget::wheelEvent(event);
 }
 
@@ -328,12 +328,12 @@ void VisualizationWidget::resizeEvent(QResizeEvent *event) {
     int minBarWidth = 1;
     int padding = 20;
     maxColumns = qMax(10, (width() - padding) / minBarWidth);
-    
+
     // Прореживание при большом числе элементов
-    if (currentFrame.values.size() > static_cast<size_t>(maxColumns)) {
+    if (currentFrame.normalizedValues.size() > static_cast<size_t>(maxColumns)) {
         // Включаем скролл
     }
-    
+
     QWidget::resizeEvent(event);
 }
 }

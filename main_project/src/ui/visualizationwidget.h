@@ -9,16 +9,11 @@
 #include <atomic>
 #include "../core/sortparams.h"
 #include "../core/sortbenchengine.h"
+#include "../visualization/colorscheme.h"
 
 namespace SortBench {
-enum class HighlightType;
-class ColorScheme;
-}
-
 // Используем VisFrame из SortBenchEngine
 using VisFrame = SortBench::VisFrame;
-
-namespace SortBench {
 
 class VisualizationWidget : public QWidget
 {
@@ -64,23 +59,23 @@ private:
     VisFrame currentFrame;
     VisFrame nextFrame;
     float interpolationT = 0.0f;
-    
+
     QTimer *animTimer;
     SortBench::ColorScheme *colorScheme;
     int animationSpeedFPS = 60;
     bool isPaused = false;
-    
+
     QQueue<VisFrame> frameQueue;
     std::atomic<bool> isReceivingFrames{false};
-    
+
     QLabel *overlayStatsLabel;
     int maxColumns = 1000;
     bool isStepMode = false;
-    
+
     // Zoom/scroll
     double zoomFactor = 1.0;
     int scrollOffset = 0;
-    
+
     int frameIndex = 0;
     qint64 lastFrameTime = 0;
 };
