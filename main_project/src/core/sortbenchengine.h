@@ -11,20 +11,15 @@
 #include <memory>
 #include "sortparams.h"
 #include "benchmarkresult.h"
+#include "cpusorter.h"
 
 namespace SortBench {
 
 // Forward declarations
-class CpuSorter;
+
 class CudaSorter;
 
-enum class HighlightType {
-    Compare,
-    Swap,
-    Sorted,
-    Pivot,
-    None
-};
+
 
 // Кадр визуализации
 struct VisFrame {

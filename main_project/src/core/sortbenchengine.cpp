@@ -1,10 +1,14 @@
 #include "sortbenchengine.h"
-#include "cpusorter.h"
-#include "arraygenerator.h"
 #include <QCoreApplication>
 #include <QThread>
 #include <QDateTime>
 #include <QSysInfo>
+#include "cpu/bubblesort.h"
+#include "cpu/quicksort.h"
+#include "cpu/mergesort.h"
+#include "cpu/heapsort.h"
+#include "cpu/radixsort.h"
+#include "cpu/stdsort.h"
 
 #ifdef USE_CUDA
 #include "cudasorter.h"
