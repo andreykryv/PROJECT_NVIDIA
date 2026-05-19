@@ -80,7 +80,7 @@ ProgressPanel::ProgressPanel(QWidget *parent)
 {
     createUI();
     
-    m_elapsedTimer = new QElapsedTimer(this);
+     m_elapsedTimer = new QElapsedTimer();
     m_updateTimer = new QTimer(this);
     m_updateTimer->setInterval(100);
     

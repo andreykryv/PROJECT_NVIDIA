@@ -9,11 +9,7 @@ cmake-build-release/
 .cmake/
 
 # Qt-генерированные файлы (создаются AUTOMOC/AUTOUIC/AUTORCC):
-ui_*.h
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-*.moc
+
 
 # Исполняемые файлы и библиотеки:
 *.exe

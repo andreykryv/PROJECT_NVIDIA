@@ -8,6 +8,8 @@
 #include <QDateTime>
 #include <cmath>
 
+namespace SortBench {
+
 VisualizationWidget::VisualizationWidget(QWidget *parent)
     : QWidget(parent)
     , animTimer(new QTimer(this))
@@ -333,4 +335,5 @@ void VisualizationWidget::resizeEvent(QResizeEvent *event) {
     }
     
     QWidget::resizeEvent(event);
+}
 }
