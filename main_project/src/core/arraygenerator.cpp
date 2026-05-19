@@ -3,32 +3,6 @@
 
 namespace SortBench {
 
-// Explicit template instantiations for all supported types
-
-template class ArrayGenerator<float>;
-template class ArrayGenerator<double>;
-
-// Optimized parallel generation for large arrays (> 1M elements)
-// Using std::execution::par_unseq with thread-safe RNG per thread
-
-template<typename T>
-std::vector<T> generateRandomUniformParallel(size_t size, unsigned int baseSeed) {
-    std::vector<T> result(size);
-    
-    if (size > 1000000) {
-        // Parallel generation with per-thread RNG
-        auto policy = std::execution::par_unseq;
-        std::for_each(policy, result.begin(), result.end(), 
-            [gen = std::mt19937(baseSeed), dist = std::uniform_int_distribution<T>(T(0), std::numeric_limits<T>::max() / T(2))]() mutable {
-                // Note: This is simplified - in real parallel code, each thread needs its own RNG
-            });
-    } else {
-        return ArrayGenerator<T>::generateRandomUniform(size, baseSeed);
-    }
-    
-    return result;
-}
-
 // Helper function for Fisher-Yates shuffle on subset (used in NearlySorted)
 template<typename T, typename URBG>
 void partialFisherYates(std::vector<T>& vec, size_t swapCount, URBG& gen) {

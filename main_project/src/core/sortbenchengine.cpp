@@ -1,10 +1,15 @@
 #include "sortbenchengine.h"
 #include "cpusorter.h"
-#include "cudasorter.h"
 #include "arraygenerator.h"
 #include <QCoreApplication>
 #include <QThread>
+#include <QDateTime>
+#include <QSysInfo>
+
+#ifdef USE_CUDA
+#include "cudasorter.h"
 #include <cuda_runtime.h>
+#endif
 
 namespace SortBench {
 
@@ -488,15 +493,5 @@ void SortBenchEngine::checkPausePoint() {
         QCoreApplication::processEvents();
     }
 }
-
-// Явные инстанции шаблона emitFrame для основных типов
-template void SortBenchEngine::emitFrame<int32_t>(
-    const std::vector<int32_t>&, const QList<int>&, HighlightType, long long, long long);
-template void SortBenchEngine::emitFrame<int64_t>(
-    const std::vector<int64_t>&, const QList<int>&, HighlightType, long long, long long);
-template void SortBenchEngine::emitFrame<float>(
-    const std::vector<float>&, const QList<int>&, HighlightType, long long, long long);
-template void SortBenchEngine::emitFrame<double>(
-    const std::vector<double>&, const QList<int>&, HighlightType, long long, long long);
 
 } // namespace SortBench
