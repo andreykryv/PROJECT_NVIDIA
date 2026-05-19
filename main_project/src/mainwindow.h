@@ -83,9 +83,10 @@
 #include <QLabel>
 #include <QTimer>
 #include <QList>
-
 #include "core/benchmarkresult.h"
 #include "core/sortbenchengine.h"
+#include "core/sortparams.h"        // для SortParams
+#include "utils/logger.h"           // для Logger::Level в сигнатуре onLogMessage
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -191,7 +192,7 @@ private:
     QTextEdit *logView = nullptr;
     
     // Status bar
-    QStatusBar *statusBar = nullptr;
+    QStatusBar *m_statusBar = nullptr;   // вместо statusBar = nullptr;
     QToolBar *toolbar = nullptr;
     QLabel *gpuInfoLabel = nullptr;
     QLabel *fpsLabel = nullptr;

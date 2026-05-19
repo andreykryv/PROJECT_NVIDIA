@@ -1,219 +1,96 @@
-////////////////////////////////////////////////////////////////////////////////
-// utils/settingsmanager.cpp — реализация менеджера настроек
-//
-// Внутри: QSettings settings("CUDA Lab", "SortBench").
-// Каждый геттер: settings.value(key, defaultValue).toXxx().
-// Каждый сеттер: settings.setValue(key, value); emit settingChanged(key).
-// load(): вызывается один раз в main.cpp. Нет необходимости в явном чтении —
-//   QSettings читает из системного хранилища при первом value() вызове.
-// save(): settings.sync() — гарантирует запись на диск немедленно.
-// resetToDefaults(): settings.clear(); settings.sync().
-////////////////////////////////////////////////////////////////////////////////
-
 #include "settingsmanager.h"
-#include <QSettings>
-#include <QStandardPaths>
 #include <QDir>
+#include <QStandardPaths>
 
 namespace SortBench {
 
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
 {
+    m_settings = new QSettings("CUDA Lab", "SortBench", this);
+    initDefaults();
+}
+
+SettingsManager::~SettingsManager() = default;
+
+SettingsManager& SettingsManager::instance() {
+    static SettingsManager inst;
+    return inst;
 }
 
 void SettingsManager::load() {
-    QSettings settings(organizationName(), applicationName());
-    
-    // Чтение всех настроек с дефолтными значениями
-    m_defaultCpuAlgorithm = stringToCpuAlgorithm(settings.value("cpu/algorithm", "QuickSort").toString());
-    m_defaultGpuAlgorithm = stringToGpuAlgorithm(settings.value("gpu/algorithm", "ThrustRadix").toString());
-    m_defaultArraySize = settings.value("bench/arraySize", 1000000).toInt();
-    m_defaultDistribution = stringToDistribution(settings.value("bench/distribution", "Random").toString());
-    m_minValue = settings.value("bench/minValue", 0).toInt();
-    m_maxValue = settings.value("bench/maxValue", 1000000).toInt();
-    m_iterations = settings.value("bench/iterations", 3).toInt();
-    m_verifyResults = settings.value("bench/verify", true).toBool();
-    m_useGpu = settings.value("gpu/enabled", true).toBool();
-    m_cudaDeviceId = settings.value("gpu/deviceId", 0).toInt();
-    m_showCharts = settings.value("ui/showCharts", true).toBool();
-    m_logLevel = static_cast<Logger::Level>(settings.value("ui/logLevel", 1).toInt());
-    m_autoScrollLog = settings.value("ui/autoScrollLog", true).toBool();
-    m_windowGeometry = settings.value("ui/windowGeometry").toByteArray();
-    m_windowState = settings.value("ui/windowState").toByteArray();
-    
-    emit settingsLoaded();
+    // QSettings читает из хранилища автоматически при первом обращении к value().
+    // Явная загрузка не требуется.
 }
 
 void SettingsManager::save() {
-    QSettings settings(organizationName(), applicationName());
-    
-    settings.setValue("cpu/algorithm", cpuAlgorithmToString(m_defaultCpuAlgorithm));
-    settings.setValue("gpu/algorithm", gpuAlgorithmToString(m_defaultGpuAlgorithm));
-    settings.setValue("bench/arraySize", m_defaultArraySize);
-    settings.setValue("bench/distribution", distributionToString(m_defaultDistribution));
-    settings.setValue("bench/minValue", m_minValue);
-    settings.setValue("bench/maxValue", m_maxValue);
-    settings.setValue("bench/iterations", m_iterations);
-    settings.setValue("bench/verify", m_verifyResults);
-    settings.setValue("gpu/enabled", m_useGpu);
-    settings.setValue("gpu/deviceId", m_cudaDeviceId);
-    settings.setValue("ui/showCharts", m_showCharts);
-    settings.setValue("ui/logLevel", static_cast<int>(m_logLevel));
-    settings.setValue("ui/autoScrollLog", m_autoScrollLog);
-    settings.setValue("ui/windowGeometry", m_windowGeometry);
-    settings.setValue("ui/windowState", m_windowState);
-    
-    settings.sync();
-    emit settingsSaved();
+    m_settings->sync();
 }
 
 void SettingsManager::resetToDefaults() {
-    QSettings settings(organizationName(), applicationName());
-    settings.clear();
-    settings.sync();
-    
-    // Восстановление значений по умолчанию
-    m_defaultCpuAlgorithm = CpuAlgorithm::QuickSort;
-    m_defaultGpuAlgorithm = GpuAlgorithm::ThrustRadix;
-    m_defaultArraySize = 1000000;
-    m_defaultDistribution = Distribution::Random;
-    m_minValue = 0;
-    m_maxValue = 1000000;
-    m_iterations = 3;
-    m_verifyResults = true;
-    m_useGpu = true;
-    m_cudaDeviceId = 0;
-    m_showCharts = true;
-    m_logLevel = Logger::Level::Info;
-    m_autoScrollLog = true;
-    m_windowGeometry.clear();
-    m_windowState.clear();
-    
-    emit settingsReset();
-    emit settingsChanged("all");
+    m_settings->clear();
+    m_settings->sync();
 }
 
-// Геттеры
-CpuAlgorithm SettingsManager::defaultCpuAlgorithm() const { return m_defaultCpuAlgorithm; }
-GpuAlgorithm SettingsManager::defaultGpuAlgorithm() const { return m_defaultGpuAlgorithm; }
-int SettingsManager::defaultArraySize() const { return m_defaultArraySize; }
-Distribution SettingsManager::defaultDistribution() const { return m_defaultDistribution; }
-int SettingsManager::minValue() const { return m_minValue; }
-int SettingsManager::maxValue() const { return m_maxValue; }
-int SettingsManager::iterations() const { return m_iterations; }
-bool SettingsManager::verifyResults() const { return m_verifyResults; }
-bool SettingsManager::useGpu() const { return m_useGpu; }
-int SettingsManager::cudaDeviceId() const { return m_cudaDeviceId; }
-bool SettingsManager::showCharts() const { return m_showCharts; }
-Logger::Level SettingsManager::logLevel() const { return m_logLevel; }
-bool SettingsManager::autoScrollLog() const { return m_autoScrollLog; }
-QByteArray SettingsManager::windowGeometry() const { return m_windowGeometry; }
-QByteArray SettingsManager::windowState() const { return m_windowState; }
+void SettingsManager::initDefaults() {
+    m_defaults["General/Theme"]            = "dark";
+    m_defaults["General/Language"]         = "ru";
+    m_defaults["General/LogLevel"]         = 2;
+    m_defaults["General/AutoSaveResults"]  = false;
+    m_defaults["General/SaveResultsPath"]  = QDir::homePath() + "/SortBenchResults";
+    m_defaults["General/ConfirmOnExit"]    = true;
 
-// Сеттеры
-void SettingsManager::setDefaultCpuAlgorithm(CpuAlgorithm algo) {
-    if (m_defaultCpuAlgorithm != algo) {
-        m_defaultCpuAlgorithm = algo;
-        emit settingChanged("cpu/algorithm");
+    m_defaults["CUDA/PreferredDeviceIndex"]= 0;
+    m_defaults["CUDA/CudaStreams"]         = 4;
+    m_defaults["CUDA/CudaBlockSize"]       = 256;
+    m_defaults["CUDA/UsePinnedMemory"]     = true;
+    m_defaults["CUDA/ShowProfilingData"]   = false;
+
+    m_defaults["Visualization/MaxFPS"]          = 60;
+    m_defaults["Visualization/MaxVisElements"]  = 1000;
+    m_defaults["Visualization/UseOpenGL"]       = false;
+    m_defaults["Visualization/ShowLegend"]      = true;
+    m_defaults["Visualization/ShowCounters"]    = true;
+    m_defaults["Visualization/FrameBufferSize"] = 10;
+
+    m_defaults["Window/Geometry"]    = QByteArray();
+    m_defaults["Window/WindowState"] = QByteArray();
+
+    m_defaults["LastSession/LastCpuAlgorithm"] = 1;
+    m_defaults["LastSession/LastGpuAlgorithm"] = 1;
+    m_defaults["LastSession/LastArraySize"]    = 100000;
+    m_defaults["LastSession/LastDataType"]     = 0;
+    m_defaults["LastSession/LastDistribution"] = 0;
+}
+
+QString SettingsManager::keyToString(Key key) {
+    switch (key) {
+        case Key::Theme:                return "General/Theme";
+        case Key::Language:             return "General/Language";
+        case Key::LogLevel:             return "General/LogLevel";
+        case Key::AutoSaveResults:      return "General/AutoSaveResults";
+        case Key::SaveResultsPath:      return "General/SaveResultsPath";
+        case Key::ConfirmOnExit:        return "General/ConfirmOnExit";
+        case Key::PreferredDeviceIndex: return "CUDA/PreferredDeviceIndex";
+        case Key::CudaStreams:          return "CUDA/CudaStreams";
+        case Key::CudaBlockSize:        return "CUDA/CudaBlockSize";
+        case Key::UsePinnedMemory:      return "CUDA/UsePinnedMemory";
+        case Key::ShowProfilingData:    return "CUDA/ShowProfilingData";
+        case Key::MaxFPS:               return "Visualization/MaxFPS";
+        case Key::MaxVisElements:       return "Visualization/MaxVisElements";
+        case Key::UseOpenGL:            return "Visualization/UseOpenGL";
+        case Key::ShowLegend:           return "Visualization/ShowLegend";
+        case Key::ShowCounters:         return "Visualization/ShowCounters";
+        case Key::FrameBufferSize:      return "Visualization/FrameBufferSize";
+        case Key::Geometry:             return "Window/Geometry";
+        case Key::WindowState:          return "Window/WindowState";
+        case Key::LastCpuAlgorithm:     return "LastSession/LastCpuAlgorithm";
+        case Key::LastGpuAlgorithm:     return "LastSession/LastGpuAlgorithm";
+        case Key::LastArraySize:        return "LastSession/LastArraySize";
+        case Key::LastDataType:         return "LastSession/LastDataType";
+        case Key::LastDistribution:     return "LastSession/LastDistribution";
+        default:                        return "";
     }
 }
-
-void SettingsManager::setDefaultGpuAlgorithm(GpuAlgorithm algo) {
-    if (m_defaultGpuAlgorithm != algo) {
-        m_defaultGpuAlgorithm = algo;
-        emit settingChanged("gpu/algorithm");
-    }
-}
-
-void SettingsManager::setDefaultArraySize(int size) {
-    if (m_defaultArraySize != size) {
-        m_defaultArraySize = size;
-        emit settingChanged("bench/arraySize");
-    }
-}
-
-void SettingsManager::setDefaultDistribution(Distribution dist) {
-    if (m_defaultDistribution != dist) {
-        m_defaultDistribution = dist;
-        emit settingChanged("bench/distribution");
-    }
-}
-
-void SettingsManager::setMinValue(int val) {
-    if (m_minValue != val) {
-        m_minValue = val;
-        emit settingChanged("bench/minValue");
-    }
-}
-
-void SettingsManager::setMaxValue(int val) {
-    if (m_maxValue != val) {
-        m_maxValue = val;
-        emit settingChanged("bench/maxValue");
-    }
-}
-
-void SettingsManager::setIterations(int count) {
-    if (m_iterations != count) {
-        m_iterations = count;
-        emit settingChanged("bench/iterations");
-    }
-}
-
-void SettingsManager::setVerifyResults(bool verify) {
-    if (m_verifyResults != verify) {
-        m_verifyResults = verify;
-        emit settingChanged("bench/verify");
-    }
-}
-
-void SettingsManager::setUseGpu(bool enabled) {
-    if (m_useGpu != enabled) {
-        m_useGpu = enabled;
-        emit settingChanged("gpu/enabled");
-    }
-}
-
-void SettingsManager::setCudaDeviceId(int id) {
-    if (m_cudaDeviceId != id) {
-        m_cudaDeviceId = id;
-        emit settingChanged("gpu/deviceId");
-    }
-}
-
-void SettingsManager::setShowCharts(bool show) {
-    if (m_showCharts != show) {
-        m_showCharts = show;
-        emit settingChanged("ui/showCharts");
-    }
-}
-
-void SettingsManager::setLogLevel(Logger::Level level) {
-    if (m_logLevel != level) {
-        m_logLevel = level;
-        emit settingChanged("ui/logLevel");
-    }
-}
-
-void SettingsManager::setAutoScrollLog(bool scroll) {
-    if (m_autoScrollLog != scroll) {
-        m_autoScrollLog = scroll;
-        emit settingChanged("ui/autoScrollLog");
-    }
-}
-
-void SettingsManager::setWindowGeometry(const QByteArray &geom) {
-    m_windowGeometry = geom;
-    emit settingChanged("ui/windowGeometry");
-}
-
-void SettingsManager::setWindowState(const QByteArray &state) {
-    m_windowState = state;
-    emit settingChanged("ui/windowState");
-}
-
-QString SettingsManager::organizationName() { return "CUDA Lab"; }
-QString SettingsManager::applicationName() { return "SortBench"; }
 
 } // namespace SortBench

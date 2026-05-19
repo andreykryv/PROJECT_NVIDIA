@@ -1,57 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // utils/settingsmanager.h — менеджер пользовательских настроек
 //
-// НАЗНАЧЕНИЕ:
-//   Singleton-обёртка над QSettings. Типизированный доступ ко всем
-//   настройкам приложения с дефолтными значениями.
-//
-// КЛАСС: SettingsManager (Singleton)
-//
-//   КАТЕГОРИИ НАСТРОЕК:
-//
-//   General:
-//     theme()           → QString  ("dark" / "light")
-//     language()        → QString  ("ru" / "en")
-//     logLevel()        → int      (0–4)
-//     autoSaveResults() → bool
-//     saveResultsPath() → QString
-//     confirmOnExit()   → bool
-//
-//   CUDA:
-//     preferredDeviceIndex() → int
-//     cudaStreams()          → int     (1–16)
-//     cudaBlockSize()        → int     (32–1024)
-//     usePinnedMemory()      → bool
-//     showProfilingData()    → bool
-//
-//   Visualization:
-//     maxFPS()              → int     (1–144)
-//     maxVisElements()      → int
-//     useOpenGL()           → bool
-//     showLegend()          → bool
-//     showCounters()        → bool
-//     frameBufferSize()     → int
-//
-//   Window:
-//     geometry()            → QByteArray
-//     windowState()         → QByteArray  (для QMainWindow::restoreState)
-//
-//   LastSession:
-//     lastCpuAlgorithm()    → int
-//     lastGpuAlgorithm()    → int
-//     lastArraySize()       → int
-//     lastDataType()        → int
-//     lastDistribution()    → int
-//
-//   МЕТОДЫ:
-//     void load()                        — загрузить из QSettings
-//     void save()                        — сохранить в QSettings
-//     void resetToDefaults()             — сбросить все настройки
-//     template<T> T get(Key) const
-//     template<T> void set(Key, T value)
-//
-//   СИГНАЛЫ:
-//     settingChanged(QString key)        — при изменении любой настройки
+// (комментарии опущены для краткости)
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SETTINGS_MANAGER_H
@@ -67,113 +17,95 @@ class SettingsManager : public QObject {
     Q_OBJECT
     
 public:
-    // Перечисление ключей настроек
     enum class Key {
-        // General
         Theme,
         Language,
         LogLevel,
         AutoSaveResults,
         SaveResultsPath,
         ConfirmOnExit,
-        
-        // CUDA
         PreferredDeviceIndex,
         CudaStreams,
         CudaBlockSize,
         UsePinnedMemory,
         ShowProfilingData,
-        
-        // Visualization
         MaxFPS,
         MaxVisElements,
         UseOpenGL,
         ShowLegend,
         ShowCounters,
         FrameBufferSize,
-        
-        // Window
         Geometry,
         WindowState,
-        
-        // LastSession
         LastCpuAlgorithm,
         LastGpuAlgorithm,
         LastArraySize,
         LastDataType,
         LastDistribution
     };
-    
-    // Получить единственный экземпляр
+
     static SettingsManager& instance();
-    
-    // Загрузить настройки из хранилища
     void load();
-    
-    // Сохранить настройки в хранилище
     void save();
-    
-    // Сбросить все настройки к значениям по умолчанию
     void resetToDefaults();
-    
-    // Получить значение настройки
-    template<typename T>
-    T get(Key key) const;
-    
-    // Установить значение настройки
-    template<typename T>
-    void set(Key key, const T& value);
-    
-    // Специализированные геттеры для General
+
+    template<typename T> T get(Key key) const;
+    template<typename T> void set(Key key, const T& value);
+
+    // General
     QString theme() const { return get<QString>(Key::Theme); }
     QString language() const { return get<QString>(Key::Language); }
     int logLevel() const { return get<int>(Key::LogLevel); }
     bool autoSaveResults() const { return get<bool>(Key::AutoSaveResults); }
     QString saveResultsPath() const { return get<QString>(Key::SaveResultsPath); }
     bool confirmOnExit() const { return get<bool>(Key::ConfirmOnExit); }
-    
-    // Специализированные геттеры для CUDA
+
+    // CUDA
     int preferredDeviceIndex() const { return get<int>(Key::PreferredDeviceIndex); }
     int cudaStreams() const { return get<int>(Key::CudaStreams); }
     int cudaBlockSize() const { return get<int>(Key::CudaBlockSize); }
     bool usePinnedMemory() const { return get<bool>(Key::UsePinnedMemory); }
     bool showProfilingData() const { return get<bool>(Key::ShowProfilingData); }
-    
-    // Специализированные геттеры для Visualization
+
+    // Visualization
     int maxFPS() const { return get<int>(Key::MaxFPS); }
     int maxVisElements() const { return get<int>(Key::MaxVisElements); }
     bool useOpenGL() const { return get<bool>(Key::UseOpenGL); }
     bool showLegend() const { return get<bool>(Key::ShowLegend); }
     bool showCounters() const { return get<bool>(Key::ShowCounters); }
     int frameBufferSize() const { return get<int>(Key::FrameBufferSize); }
-    
-    // Специализированные геттеры для Window
+
+    // Window – оригинальные геттеры
     QByteArray geometry() const { return get<QByteArray>(Key::Geometry); }
     QByteArray windowState() const { return get<QByteArray>(Key::WindowState); }
-    
-    // Специализированные геттеры для LastSession
+
+    // LastSession
     int lastCpuAlgorithm() const { return get<int>(Key::LastCpuAlgorithm); }
     int lastGpuAlgorithm() const { return get<int>(Key::LastGpuAlgorithm); }
     int lastArraySize() const { return get<int>(Key::LastArraySize); }
     int lastDataType() const { return get<int>(Key::LastDataType); }
     int lastDistribution() const { return get<int>(Key::LastDistribution); }
-    
+
+    // Дополнительные удобные методы (без дублирования)
+    void setWindowGeometry(const QByteArray &geom) { set(Key::Geometry, geom); }
+    QByteArray windowGeometry() const { return get<QByteArray>(Key::Geometry); }
+    void setWindowState(const QByteArray &state) { set(Key::WindowState, state); }
+    void setTheme(const QString &theme) { set(Key::Theme, theme); }
+    int cudaDeviceId() const { return preferredDeviceIndex(); }
+
 signals:
     void settingChanged(const QString& key);
-    
+
 private:
     explicit SettingsManager(QObject* parent = nullptr);
     ~SettingsManager() override;
-    
+
     SettingsManager(const SettingsManager&) = delete;
     SettingsManager& operator=(const SettingsManager&) = delete;
-    
-    // Инициализация значений по умолчанию
+
     void initDefaults();
-    
-    // Получить строковое имя ключа
     static QString keyToString(Key key);
-    
+
     QSettings* m_settings;
     QVariantMap m_defaults;
 };

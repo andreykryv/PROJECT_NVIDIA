@@ -78,8 +78,11 @@
 #include "ui/settingsdialog.h"
 #include "ui/aboutdialog.h"
 #include "core/sortbenchengine.h"
+#include "core/sortparams.h"
+#include "core/benchmarkresult.h"
 #include "utils/settingsmanager.h"
 #include "utils/logger.h"
+#include "utils/csvexporter.h"
 #include "gpu/cudadeviceinfo.h"
 #include <QMenuBar>
 #include <QMenu>
@@ -92,6 +95,7 @@
 #include <QStandardPaths>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QScrollBar>                 // <-- добавить
 
 namespace SortBench {
 
@@ -350,7 +354,7 @@ void MainWindow::onRunBenchmark()
     // Запуск в рабочем потоке
     QMetaObject::invokeMethod(engine, "startBenchmark",
         Qt::QueuedConnection,
-        Q_ARG(SortParams, params));
+        Q_ARG(SortBench::SortParams, params));
     
     tabWidget->setCurrentWidget(vizWidget);
 }
@@ -418,7 +422,7 @@ void MainWindow::onProgressUpdated(int percent)
     progressPanel->setProgress(percent);
 }
 
-void MainWindow::onVisualizationFrame(const VisualizationFrame &frame)
+void MainWindow::onVisualizationFrame(const SortBench::VisFrame &frame)
 {
     vizWidget->renderFrame(frame);
 }
@@ -453,7 +457,7 @@ void MainWindow::onExportChart()
     if (fileName.isEmpty())
         return;
     
-    chartWidget->exportChart(fileName);
+   chartWidget->exportChart(0, fileName);
     
     statusBar->showMessage(tr("График сохранён"), 2000);
 }
@@ -623,8 +627,8 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
 
 void MainWindow::updateGPUInfo()
 {
-    if (CudaDeviceInfo::hasCudaDevice()) {
-        auto props = CudaDeviceInfo::getDeviceProperties(
+    if (CudaDeviceInfo::isCudaAvailable()) {
+        auto props = CudaDeviceInfo::getProperties(
             SettingsManager::instance().cudaDeviceId());
         
         QString text = CudaDeviceInfo::formatDeviceInfo(props);

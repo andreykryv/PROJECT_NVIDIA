@@ -10,16 +10,16 @@
 #include "utils/settingsmanager.h"
 #include "gpu/cudadeviceinfo.h"
 
+using namespace SortBench;   // позволяет писать Logger, SettingsManager без SortBench::
+
 int main(int argc, char *argv[])
 {
-    // 1. Инициализация QApplication
     QApplication app(argc, argv);
     app.setApplicationName("SortBench");
     app.setOrganizationName("CUDA Lab");
     app.setApplicationVersion("1.0.0");
     app.setWindowIcon(QIcon(":icons/app_icon.png"));
     
-    // 2. Разбор аргументов командной строки
     QCommandLineParser parser;
     parser.setApplicationDescription("Бенчмарк алгоритмов сортировки CPU vs GPU");
     parser.addHelpOption();
@@ -51,25 +51,23 @@ int main(int argc, char *argv[])
     
     parser.process(app);
     
-    // 3. Инициализация логгера
     int logLevel = parser.value(logLevelOption).toInt();
-    Logger::instance().initialize(static_cast<Logger::LogLevel>(logLevel), 
+    Logger::instance().initialize(static_cast<Logger::Level>(logLevel), 
                                   QDir::homePath() + "/.sortbench/sortbench.log");
     
-    // 4. Проверка CUDA
     bool cudaAvailable = true;
     if (!parser.isSet(noCudaOption)) {
         try {
-            int deviceCount = CudaDeviceInfo::queryAllDevices();
+            int deviceCount = CudaDeviceInfo::deviceCount();
             if (deviceCount == 0) {
                 cudaAvailable = false;
                 LOG_WARN("CUDA устройства не найдены");
             } else {
-                LOG_INFO("Найдено CUDA устройств: %d", deviceCount);
+                LOG_INFO(QString("Найдено CUDA устройств: %1").arg(deviceCount));
             }
         } catch (const std::exception& e) {
             cudaAvailable = false;
-            LOG_ERROR("Ошибка инициализации CUDA: %s", e.what());
+            LOG_ERROR(QString("Ошибка инициализации CUDA: %1").arg(e.what()));
         }
         
         if (!cudaAvailable) {
@@ -79,12 +77,10 @@ int main(int argc, char *argv[])
         }
     }
     
-    // 5. Загрузка настроек
     bool useDarkTheme = parser.isSet(darkOption) || 
                        (!parser.isSet(lightOption) && 
-                        SettingsManager::instance().value("theme/dark", true).toBool());
+                        SettingsManager::instance().theme() == "dark");
     
-    // 6. Применение темы
     QString themeFile = useDarkTheme ? ":/styles/darktheme.qss" : ":/styles/lighttheme.qss";
     QFile styleFile(themeFile);
     if (styleFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -93,13 +89,10 @@ int main(int argc, char *argv[])
         styleFile.close();
     }
     
-    // Применение стиля Fusion для кроссплатформенности
     app.setStyle(QStyleFactory::create("Fusion"));
     
-    // 7. Создание и показ главного окна
     MainWindow mainWindow;
     mainWindow.show();
     
-    // 8. Запуск цикла событий
     return app.exec();
 }

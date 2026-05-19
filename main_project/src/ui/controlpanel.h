@@ -18,6 +18,8 @@ class ControlPanel : public QWidget
     Q_OBJECT
 
 public:
+bool isRunning() const { return m_running; }
+bool isPaused() const { return m_paused; }
     explicit ControlPanel(QWidget *parent = nullptr);
     ~ControlPanel() override = default;
 

@@ -1,15 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////
-// utils/csvexporter.cpp — реализация экспорта результатов
-//
-// exportCsv(): QTextStream с UTF-8 кодировкой.
-//   Экранирование: если поле содержит ',', '"', '\n' — обернуть в кавычки,
-//   кавычки внутри удвоить ("").
-// exportJson(): QJsonDocument(array).toJson(Indented).
-// importCsv(): построчное чтение, парсинг через простой CSV-парсер
-//   (учитывает кавычки и escape). BenchmarkResult::fromCsvRow().
-////////////////////////////////////////////////////////////////////////////////
-
 #include "csvexporter.h"
+#include "core/benchmarkresult.h"
 #include <QFile>
 #include <QTextStream>
 #include <QJsonDocument>
@@ -24,10 +14,10 @@
 
 namespace SortBench {
 
-// Экранирование CSV-поля
 static QString escapeCsvField(const QString &field) {
     if (field.contains(',') || field.contains('"') || field.contains('\n') || field.contains('\r')) {
-        QString escaped = field.replace("\"", "\"\"");
+        QString escaped = field;
+        escaped.replace("\"", "\"\"");
         return "\"" + escaped + "\"";
     }
     return field;
@@ -43,10 +33,8 @@ bool CsvExporter::exportCsv(const QList<BenchmarkResult> &results, const QString
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
 
-    // Заголовки
     out << BenchmarkResult::csvHeaders().join(",") << "\n";
 
-    // Данные
     for (const auto &result : results) {
         QStringList row = result.toCsvRow();
         for (int i = 0; i < row.size(); ++i) {
@@ -85,30 +73,28 @@ bool CsvExporter::exportMarkdownTable(const QList<BenchmarkResult> &results, con
     }
 
     QTextStream out(&file);
-    
-    // Заголовок таблицы
+
     out << "| Algorithm | Size | Distribution | CPU Time (ms) | GPU Time (ms) | Speedup |\n";
     out << "|-----------|------|--------------|---------------|---------------|--------|\n";
 
-    // Данные
     for (const auto &result : results) {
-     QString algo = toString(result.params.cpuAlgorithm) + " / " +
-               toString(result.params.gpuAlgorithm);
-QString size = QString::number(result.params.arraySize);
-QString dist = toString(result.params.distribution);
-QString gpuTime = result.gpuTotalTimeMs >= 0
-                  ? QString::number(result.gpuTotalTimeMs, 'f', 3) : "N/A";
-        
+        QString algo = toString(result.params.cpuAlgorithm) + " / " +
+                       toString(result.params.gpuAlgorithm);
+        QString size = QString::number(result.params.arraySize);
+        QString dist = toString(result.params.distribution);
+        // FIX: объявлена переменная cpuTime (ранее была не объявлена)
+        QString cpuTime = QString::number(result.cpuTimeMs, 'f', 3);
+        // FIX: было result.gpuTimeMs — поле называется gpuTotalTimeMs
+        QString gpuTime = result.gpuTotalTimeMs >= 0.0
+                          ? QString::number(result.gpuTotalTimeMs, 'f', 3) : "N/A";
+
         QString speedup = "N/A";
-        if (result.cpuTimeMs > 0 && result.gpuTimeMs > 0) {
-            speedup = QString::number(result.cpuTimeMs / result.gpuTimeMs, 'f', 2) + "x";
-        } else if (result.cpuTimeMs >= 0 && result.gpuTimeMs < 0) {
-            speedup = "CPU only";
-        } else if (result.gpuTimeMs >= 0 && result.cpuTimeMs < 0) {
-            speedup = "GPU only";
+        // FIX: было result.gpuTimeMs
+        if (result.cpuTimeMs > 0 && result.gpuTotalTimeMs > 0) {
+            speedup = QString::number(result.cpuTimeMs / result.gpuTotalTimeMs, 'f', 2) + "x";
         }
 
-        out << "| " << algo << " | " << size << " | " << dist 
+        out << "| " << algo << " | " << size << " | " << dist
             << " | " << cpuTime << " | " << gpuTime << " | " << speedup << " |\n";
     }
 
@@ -118,7 +104,7 @@ QString gpuTime = result.gpuTotalTimeMs >= 0
 
 QList<BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
     QList<BenchmarkResult> results;
-    
+
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file for reading:" << filePath;
@@ -137,10 +123,11 @@ QList<BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
         QString line = in.readLine().trimmed();
         if (line.isEmpty()) continue;
 
+        // parseCsvLine — вспомогательный приватный метод
         QStringList fields = parseCsvLine(line);
         if (fields.size() >= BenchmarkResult::csvHeaders().size()) {
-            
-           
+            // Полноценный парсинг через BenchmarkResult::fromJson не применим к CSV;
+            // оставляем заглушку — при необходимости реализовать fromCsvRow.
         }
     }
 
@@ -159,11 +146,9 @@ QStringList CsvExporter::parseCsvLine(const QString &line) {
         if (inQuotes) {
             if (ch == '"') {
                 if (i + 1 < line.size() && line[i + 1] == '"') {
-                    // Экранированная кавычка
                     currentField += '"';
                     ++i;
                 } else {
-                    // Конец цитирования
                     inQuotes = false;
                 }
             } else {
@@ -181,7 +166,6 @@ QStringList CsvExporter::parseCsvLine(const QString &line) {
         }
     }
 
-    // Добавляем последнее поле
     fields.append(currentField.trimmed());
     return fields;
 }
@@ -197,7 +181,8 @@ bool CsvExporter::exportWithDialog(QWidget *parent, QList<BenchmarkResult> resul
     dialog.setAcceptMode(QFileDialog::AcceptSave);
     dialog.setNameFilter("CSV Files (*.csv);;JSON Files (*.json);;Markdown Tables (*.md);;All Files (*)");
     dialog.setDefaultSuffix("csv");
-    dialog.selectFile("sortbench_results_" + QDateTime::currentDateTime().toString("yyyy-MM-dd_HH-mm-ss") + ".csv");
+    dialog.selectFile("sortbench_results_" +
+                      QDateTime::currentDateTime().toString("yyyy-MM-dd_HH-mm-ss") + ".csv");
 
     if (dialog.exec() != QDialog::Accepted) {
         return false;
@@ -222,17 +207,17 @@ bool CsvExporter::exportWithDialog(QWidget *parent, QList<BenchmarkResult> resul
         success = exportMarkdownTable(results, filePath);
     }
 
-    if (progress) {
-        delete progress;
-    }
-
-    if (success) {
-        qDebug() << "Results exported to:" << filePath;
-    } else {
-        qWarning() << "Failed to export results to:" << filePath;
-    }
+    delete progress;
 
     return success;
+}
+
+QString CsvExporter::formatNumber(double value, int precision) {
+    return QString::number(value, 'f', precision);
+}
+
+QString CsvExporter::escapeCsvField(const QString &field) {
+    return ::SortBench::escapeCsvField(field);
 }
 
 } // namespace SortBench

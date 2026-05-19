@@ -39,15 +39,16 @@ Logger::~Logger() {
     delete m_logFile;
 }
 
-Logger* Logger::instance() {
+Logger& Logger::instance() {
     QMutexLocker locker(&m_mutex);
     if (!m_instance) {
         m_instance = new Logger();
     }
-    return m_instance;
+    return *m_instance;
 }
 
-void Logger::initialize() {
+void Logger::initialize(Level minLevel, const QString& logFilePath) {
+    m_minLevel = minLevel;
     QString logDir = QDir::homePath() + "/.sortbench/logs";
     QDir().mkpath(logDir);
     
