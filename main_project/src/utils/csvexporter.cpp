@@ -23,7 +23,7 @@ static QString escapeCsvField(const QString &field) {
     return field;
 }
 
-bool CsvExporter::exportCsv(const QList<BenchmarkResult> &results, const QString &filePath) {
+bool CsvExporter::exportCsv(const QList<SortBench::BenchmarkResult> &results, const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file for writing:" << filePath;
@@ -33,7 +33,7 @@ bool CsvExporter::exportCsv(const QList<BenchmarkResult> &results, const QString
     QTextStream out(&file);
     out.setEncoding(QStringConverter::Utf8);
 
-    out << BenchmarkResult::csvHeaders().join(",") << "\n";
+    out << SortBench::BenchmarkResult::csvHeaders().join(",") << "\n";
 
     for (const auto &result : results) {
         QStringList row = result.toCsvRow();
@@ -47,7 +47,7 @@ bool CsvExporter::exportCsv(const QList<BenchmarkResult> &results, const QString
     return true;
 }
 
-bool CsvExporter::exportJson(const QList<BenchmarkResult> &results, const QString &filePath) {
+bool CsvExporter::exportJson(const QList<SortBench::BenchmarkResult> &results, const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file for writing:" << filePath;
@@ -65,7 +65,7 @@ bool CsvExporter::exportJson(const QList<BenchmarkResult> &results, const QStrin
     return true;
 }
 
-bool CsvExporter::exportMarkdownTable(const QList<BenchmarkResult> &results, const QString &filePath) {
+bool CsvExporter::exportMarkdownTable(const QList<SortBench::BenchmarkResult> &results, const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file for writing:" << filePath;
@@ -102,8 +102,8 @@ bool CsvExporter::exportMarkdownTable(const QList<BenchmarkResult> &results, con
     return true;
 }
 
-QList<BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
-    QList<BenchmarkResult> results;
+QList<SortBench::BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
+    QList<SortBench::BenchmarkResult> results;
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -125,7 +125,7 @@ QList<BenchmarkResult> CsvExporter::importCsv(const QString &filePath) {
 
         // parseCsvLine — вспомогательный приватный метод
         QStringList fields = parseCsvLine(line);
-        if (fields.size() >= BenchmarkResult::csvHeaders().size()) {
+        if (fields.size() >= SortBench::BenchmarkResult::csvHeaders().size()) {
             // Полноценный парсинг через BenchmarkResult::fromJson не применим к CSV;
             // оставляем заглушку — при необходимости реализовать fromCsvRow.
         }
@@ -170,7 +170,7 @@ QStringList CsvExporter::parseCsvLine(const QString &line) {
     return fields;
 }
 
-bool CsvExporter::exportWithDialog(QWidget *parent, QList<BenchmarkResult> results) {
+bool CsvExporter::exportWithDialog(QWidget *parent, QList<SortBench::BenchmarkResult> results) {
     if (results.isEmpty()) {
         qWarning() << "No results to export";
         return false;

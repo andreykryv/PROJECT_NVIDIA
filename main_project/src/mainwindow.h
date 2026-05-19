@@ -20,10 +20,12 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-namespace SortBench {
+// Forward declarations - эти классы НЕ в namespace SortBench
 class ControlPanel;
 class VisualizationWidget;
 class ChartWidget;
+
+namespace SortBench {
 class ProgressPanel;
 class StatsPanel;
 class SortBenchEngine;
