@@ -46,25 +46,26 @@
 #include <QProgressDialog>
 #include <QWidget>
 
-// Forward declaration
+namespace SortBench {
 class BenchmarkResult;
+}
 
 class CsvExporter {
 public:
     // Экспорт в CSV
-    static bool exportCsv(const QList<BenchmarkResult>& results, const QString& filePath);
+    static bool exportCsv(const QList<SortBench::BenchmarkResult>& results, const QString& filePath);
     
     // Экспорт в JSON
-    static bool exportJson(const QList<BenchmarkResult>& results, const QString& filePath);
+    static bool exportJson(const QList<SortBench::BenchmarkResult>& results, const QString& filePath);
     
     // Экспорт в Markdown таблицу
-    static bool exportMarkdownTable(const QList<BenchmarkResult>& results, const QString& filePath);
+    static bool exportMarkdownTable(const QList<SortBench::BenchmarkResult>& results, const QString& filePath);
     
     // Импорт из CSV
-    static QList<BenchmarkResult> importCsv(const QString& filePath);
+    static QList<SortBench::BenchmarkResult> importCsv(const QString& filePath);
     
     // Диалог экспорта
-    static bool exportWithDialog(QWidget* parent, const QList<BenchmarkResult>& results);
+    static bool exportWithDialog(QWidget* parent, const QList<SortBench::BenchmarkResult>& results);
     
     // Форматирование числа с разделителями
     static QString formatNumber(double value, int precision = 3);
