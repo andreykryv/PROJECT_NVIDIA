@@ -26,6 +26,8 @@ private:
     double m_gpuMs = 0.0;
 };
 
+} // namespace SortBench
+
 class ProgressPanel : public QWidget
 {
     Q_OBJECT

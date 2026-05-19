@@ -20,16 +20,19 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-// Forward declarations - эти классы НЕ в namespace SortBench
-class ControlPanel;
-class VisualizationWidget;
-class ChartWidget;
-
+// Forward declarations - классы в namespace SortBench
 namespace SortBench {
-class ProgressPanel;
-class StatsPanel;
 class SortBenchEngine;
 }
+
+// Include для ControlPanel - требуется полное определение
+#include "ui/controlpanel.h"
+
+// Include для виджетов - они НЕ в namespace SortBench  
+#include "ui/visualizationwidget.h"
+#include "ui/chartwidget.h"
+#include "ui/progresspanel.h"
+#include "ui/statspanel.h"
 
 // Include для диалогов - они НЕ в namespace SortBench
 #include "ui/settingsdialog.h"
@@ -59,9 +62,9 @@ private slots:
     void onAlgorithmChanged();
     void onArraySizeChanged(int size);
     void onAnimationSpeedChanged(int speed);
-    void onBenchmarkFinished(const SortBench::BenchmarkResult &result);
+    void onBenchmarkFinished(const BenchmarkResult &result);
     void onProgressUpdated(int percent);
-    void onVisualizationFrame(const SortBench::VisFrame &frame);
+    void onVisualizationFrame(const VisFrame &frame);
     void onExportCSV();
     void onExportChart();
     void onOpenSettings();
@@ -91,9 +94,9 @@ private:
 
     Ui::MainWindow *ui = nullptr;
 
-    ControlPanel *controlPanel = nullptr;
-    VisualizationWidget *vizWidget = nullptr;
-    ChartWidget *chartWidget = nullptr;
+    SortBench::ControlPanel *controlPanel = nullptr;
+    SortBench::VisualizationWidget *vizWidget = nullptr;
+    SortBench::ChartWidget *chartWidget = nullptr;
     SortBench::ProgressPanel *progressPanel = nullptr;
     SortBench::StatsPanel *statsPanel = nullptr;
     SortBenchEngine *engine = nullptr;
@@ -113,7 +116,7 @@ private:
     AboutDialog *aboutDialog = nullptr;
 
     bool m_isDarkTheme = true;
-    QList<SortBench::BenchmarkResult> m_results;
+    QList<BenchmarkResult> m_results;
     QAction *m_themeAction = nullptr;
 };
 

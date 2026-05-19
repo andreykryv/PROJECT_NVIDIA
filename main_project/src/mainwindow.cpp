@@ -47,7 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     engine->moveToThread(workerThread);
     workerThread->start();
 
-    controlPanel = new ControlPanel(this);
+    controlPanel = new SortBench::ControlPanel(this);
     vizWidget = new VisualizationWidget(this);
     chartWidget = new ChartWidget(this);
     progressPanel = new SortBench::ProgressPanel(this);
@@ -185,7 +185,7 @@ void MainWindow::setupShortcuts() {}
 
 void MainWindow::connectSignals()
 {
-    connect(controlPanel, &ControlPanel::parametersChanged,
+    connect(controlPanel, &SortBench::ControlPanel::parametersChanged,
             this, &MainWindow::onAlgorithmChanged);
     connect(engine, &SortBenchEngine::progressUpdated,
             progressPanel, &SortBench::ProgressPanel::setProgress);
@@ -198,16 +198,16 @@ void MainWindow::connectSignals()
     connect(engine, &SortBenchEngine::gpuMemoryUpdated,
             this, &MainWindow::onGPUMemoryUpdated);
 
-    connect(controlPanel, &ControlPanel::runRequested,
+    connect(controlPanel, &SortBench::ControlPanel::runRequested,
             this, &MainWindow::onRunBenchmark);
-    connect(controlPanel, &ControlPanel::stopRequested,
+    connect(controlPanel, &SortBench::ControlPanel::stopRequested,
             this, &MainWindow::onStopBenchmark);
-    connect(controlPanel, &ControlPanel::pauseResumeRequested,
+    connect(controlPanel, &SortBench::ControlPanel::pauseResumeRequested,
             this, &MainWindow::onPauseResume);
-    connect(controlPanel, &ControlPanel::resetRequested,
+    connect(controlPanel, &SortBench::ControlPanel::resetRequested,
             this, &MainWindow::onResetAll);
 
-    connect(controlPanel, &ControlPanel::animationSpeedChanged,
+    connect(controlPanel, &SortBench::ControlPanel::animationSpeedChanged,
             vizWidget, &VisualizationWidget::setAnimationSpeed);
 
     connect(tabWidget, &QTabWidget::currentChanged, [this](int index) {
