@@ -8,7 +8,7 @@
 #include <QGroupBox>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include "core/benchmarkresult.h"
+#include "../core/benchmarkresult.h"
 
 namespace SortBench {
 

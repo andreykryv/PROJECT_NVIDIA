@@ -18,6 +18,8 @@ class ColorScheme;
 // Используем VisFrame из SortBenchEngine
 using VisFrame = SortBench::VisFrame;
 
+namespace SortBench {
+
 class VisualizationWidget : public QWidget
 {
     Q_OBJECT
