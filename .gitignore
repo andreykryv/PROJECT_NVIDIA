@@ -1,7 +1,5 @@
 ```
 # Build artifacts
-build/
-dist/
 *.o
 *.obj
 *.exe
@@ -10,11 +8,18 @@ dist/
 *.a
 *.out
 
+# Qt/C++ build directories
+build/
+dist/
+*.pro.user
+*.pro.user.*
+*.qm
+
 # Dependencies
-venv/
+node_modules/
 .venv/
+venv/
 __pycache__/
-*.egg-info/
 
 # Editors
 .vscode/
@@ -31,10 +36,10 @@ __pycache__/
 .env.local
 *.env.*
 
-# Coverage
+# Coverage and testing
+.coverage
 coverage/
 htmlcov/
-.coverage
 
 # OS
 .DS_Store

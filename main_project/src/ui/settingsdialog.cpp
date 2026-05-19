@@ -24,6 +24,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDir>
+#include <QThread>
 
 SettingsDialog::SettingsDialog(QWidget* parent)
     : QDialog(parent)
@@ -259,7 +260,7 @@ void SettingsDialog::saveToSettings() {
     // General
     sm.set(SettingsManager::Key::Theme, m_themeCombo->currentText());
     sm.set(SettingsManager::Key::Language, 
-           m_languageCombo->currentText() == tr("Русский") ? "ru" : "en");
+           QString(m_languageCombo->currentText() == tr("Русский") ? "ru" : "en"));
     sm.set(SettingsManager::Key::LogLevel, m_logSizeSpin->value());
     sm.set(SettingsManager::Key::AutoSaveResults, m_autoSaveCheck->isChecked());
     sm.set(SettingsManager::Key::SaveResultsPath, m_savePathEdit->text());

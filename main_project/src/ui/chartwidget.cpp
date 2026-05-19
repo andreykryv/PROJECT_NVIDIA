@@ -18,6 +18,8 @@
 #include <QSvgGenerator>
 #include <QPainter>
 
+namespace SortBench {
+
 ChartWidget::ChartWidget(QWidget *parent)
     : QWidget(parent)
     , barChart(nullptr)
@@ -330,4 +332,5 @@ void ChartWidget::setupChartTheme(bool isDark) {
     if (scatterChart) scatterChart->chart()->setTheme(theme);
     if (speedupChart) speedupChart->setTheme(theme);
     if (gpuDetailChart) gpuDetailChart->setTheme(theme);
+}
 }

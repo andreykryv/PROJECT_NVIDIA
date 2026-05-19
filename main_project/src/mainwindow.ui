@@ -2,31 +2,31 @@
 <ui version="4.0">
  <customwidgets>
   <customwidget>
-   <class>ControlPanel</class>
+   <class>SortBench::ControlPanel</class>
    <extends>QWidget</extends>
    <header>ui/controlpanel.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>VisualizationWidget</class>
+   <class>SortBench::VisualizationWidget</class>
    <extends>QWidget</extends>
    <header>ui/visualizationwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ChartWidget</class>
+   <class>SortBench::ChartWidget</class>
    <extends>QWidget</extends>
    <header>ui/chartwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ProgressPanel</class>
+   <class>SortBench::ProgressPanel</class>
    <extends>QWidget</extends>
    <header>ui/progresspanel.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>StatsPanel</class>
+   <class>SortBench::StatsPanel</class>
    <extends>QWidget</extends>
    <header>ui/statspanel.h</header>
    <container>1</container>
@@ -122,7 +122,7 @@
 
         <!-- Панель управления (Promoted Widget) -->
         <item>
-         <widget class="ControlPanel" name="controlPanel">
+         <widget class="SortBench::ControlPanel" name="controlPanel">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -223,7 +223,7 @@
             </property>
 
             <item>
-             <widget class="VisualizationWidget" name="visualizationWidget">
+             <widget class="SortBench::VisualizationWidget" name="visualizationWidget">
               <property name="autoFillBackground">
                <bool>false</bool>
               </property>
@@ -255,7 +255,7 @@
             </property>
 
             <item>
-             <widget class="ChartWidget" name="chartWidget"/>
+             <widget class="SortBench::ChartWidget" name="chartWidget"/>
             </item>
            </layout>
           </widget>
