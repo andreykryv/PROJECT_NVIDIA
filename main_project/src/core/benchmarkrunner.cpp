@@ -32,18 +32,18 @@ void BenchmarkRunner::startBatch(const BatchConfig& config, SortBenchEngine* eng
     d->stopRequested = false;
     
     // Генерируем декартово произведение всех параметров
-    for (int cpuAlgo : std::as_const(config.cpuAlgorithms)) {
-        for (int gpuAlgo : std::as_const(config.gpuAlgorithms)) {
+    for (CpuAlgorithm cpuAlgo : config.cpuAlgorithms) {
+        for (GpuAlgorithm gpuAlgo : config.gpuAlgorithms) {
             for (int size : config.arraySizes) {
-                for (int dataType : std::as_const(config.dataTypes)) {
-                    for (int dist : std::as_const(config.distributions)) {
+                for (DataType dataType : config.dataTypes) {
+                    for (Distribution dist : config.distributions) {
                         for (int rep = 0; rep < config.repeatCount; ++rep) {
                             SortParams params;
-                            params.cpuAlgorithm = static_cast<CpuAlgorithm>(cpuAlgo);
-                            params.gpuAlgorithm = static_cast<GpuAlgorithm>(gpuAlgo);
+                            params.cpuAlgorithm = cpuAlgo;
+                            params.gpuAlgorithm = gpuAlgo;
                             params.arraySize = size;
-                            params.dataType = static_cast<DataType>(dataType);
-                            params.distribution = static_cast<Distribution>(dist);
+                            params.dataType = dataType;
+                            params.distribution = dist;
                             params.randomSeed = QRandomGenerator::global()->generate();
                             d->testQueue.append(params);
                         }
