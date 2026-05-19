@@ -50,8 +50,8 @@ MainWindow::MainWindow(QWidget *parent)
     controlPanel = new ControlPanel(this);
     vizWidget = new VisualizationWidget(this);
     chartWidget = new ChartWidget(this);
-    progressPanel = new ProgressPanel(this);
-    statsPanel = new StatsPanel(this);
+    progressPanel = new SortBench::ProgressPanel(this);
+    statsPanel = new SortBench::StatsPanel(this);
 
     setupMenuBar();
     setupToolBar();
@@ -186,9 +186,9 @@ void MainWindow::setupShortcuts() {}
 void MainWindow::connectSignals()
 {
     connect(controlPanel, &ControlPanel::parametersChanged,
-            engine, &SortBenchEngine::updateParameters);
+            this, &MainWindow::onAlgorithmChanged);
     connect(engine, &SortBenchEngine::progressUpdated,
-            progressPanel, &ProgressPanel::setProgress);
+            progressPanel, &SortBench::ProgressPanel::setProgress);
     connect(engine, &SortBenchEngine::frameReady,
             vizWidget, &VisualizationWidget::renderFrame);
     connect(engine, &SortBenchEngine::benchmarkFinished,

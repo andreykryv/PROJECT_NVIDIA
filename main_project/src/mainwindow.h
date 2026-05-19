@@ -13,12 +13,14 @@
 #include <QList>
 #include "core/benchmarkresult.h"
 #include "core/sortparams.h"
+#include "core/sortbenchengine.h"
 #include "utils/logger.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
+namespace SortBench {
 class ControlPanel;
 class VisualizationWidget;
 class ChartWidget;
@@ -27,6 +29,7 @@ class StatsPanel;
 class SortBenchEngine;
 class SettingsDialog;
 class AboutDialog;
+}
 
 // Класс MainWindow помещаем в пространство имён SortBench
 namespace SortBench {
@@ -87,8 +90,8 @@ private:
     ControlPanel *controlPanel = nullptr;
     VisualizationWidget *vizWidget = nullptr;
     ChartWidget *chartWidget = nullptr;
-    ProgressPanel *progressPanel = nullptr;
-    StatsPanel *statsPanel = nullptr;
+    SortBench::ProgressPanel *progressPanel = nullptr;
+    SortBench::StatsPanel *statsPanel = nullptr;
     SortBenchEngine *engine = nullptr;
 
     QSplitter *mainSplitter = nullptr;

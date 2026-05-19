@@ -1,57 +1,48 @@
 ```
 # Build artifacts
-build/
-dist/
 *.o
 *.obj
 *.a
 *.lib
-*.so
 *.dll
+*.so
+*.dylib
 *.exe
 *.out
 
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-*.egg-info/
-
-# Qt/MOC generated files
-*.moc
-moc_*.cpp
-qrc_*.cpp
-ui_*.h
-
-# CMake
+# CMake build directories
+build/
+cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
-cmake_install.cmake
 Makefile
+cmake_install.cmake
+compile_commands.json
 
-# IDE
+# IDE specific
 .vscode/
 .idea/
 *.swp
 *.swo
 
+# OS generated files
+.DS_Store
+Thumbs.db
+
 # Logs
 *.log
 
-# Environment
-.env
-.env.local
-*.env.*
+# Temporary files
+*.tmp
+*~
 
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Temp files
-*.tmp
-*~
-.DS_Store
-Thumbs.db
+# Environment files
+.env
+.env.local
+*.env.*
 ```

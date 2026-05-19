@@ -211,13 +211,22 @@ target_link_libraries(SortBench PRIVATE
 )
 
 # Добавление ресурсов Qt
-qt_add_resources(SortBench "resources"
-    PREFIX "/"
-    FILES
+if(TARGET Qt6::Core)
+    qt_add_resources(SortBench "resources"
+        PREFIX "/"
+        FILES
+            ../resources/resources.qrc
+            ../resources/styles/darktheme.qss
+            ../resources/styles/lighttheme.qss
+    )
+else()
+    qt5_add_resources(SortBench_SRC
         ../resources/resources.qrc
         ../resources/styles/darktheme.qss
         ../resources/styles/lighttheme.qss
-)
+    )
+    target_sources(SortBench PRIVATE ${SortBench_SRC})
+endif()
 
 # Пути поиска заголовков
 target_include_directories(SortBench PRIVATE
