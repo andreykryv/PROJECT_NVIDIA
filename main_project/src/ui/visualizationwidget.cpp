@@ -5,6 +5,7 @@
 #include <QResizeEvent>
 #include <QToolTip>
 #include <QVBoxLayout>
+#include <QDateTime>
 #include <cmath>
 
 VisualizationWidget::VisualizationWidget(QWidget *parent)
@@ -77,6 +78,14 @@ void VisualizationWidget::reset() {
 void VisualizationWidget::setColorScheme(ColorScheme *scheme) {
     colorScheme = scheme;
     update();
+}
+
+int VisualizationWidget::currentFPS() const {
+    if (lastFrameTime == 0) return 0;
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+    qint64 diff = currentTime - lastFrameTime;
+    if (diff <= 0) return 0;
+    return static_cast<int>(1000.0 / diff);
 }
 
 void VisualizationWidget::stepForward() {

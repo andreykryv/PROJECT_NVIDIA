@@ -39,6 +39,7 @@ public:
     void pause();
     void resume();
     void reset();
+    int currentFPS() const;
     void setColorScheme(SortBench::ColorScheme *scheme);
     void stepForward();
 

@@ -85,11 +85,16 @@ option(SORTBENCH_ENABLE_PROFILING "Включить профилировщик C
 option(SORTBENCH_DEBUG_ANIMATION "Подробное логирование анимационных кадров" OFF)
 set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный размер массива")
 
-# Поиск Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts Concurrent)
+# Поиск Qt (предпочтение Qt6, затем Qt5)
+find_package(Qt6 COMPONENTS Widgets Charts Concurrent QUIET)
+if(NOT Qt6_FOUND)
+    find_package(Qt5 REQUIRED COMPONENTS Widgets Charts Concurrent)
+endif()
 
-# Поиск CUDA Toolkit
-find_package(CUDAToolkit REQUIRED)
+# Поиск CUDA Toolkit (только если включена поддержка CUDA)
+if(ENABLE_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+endif()
 
 # Выходной каталог для исполняемых файлов
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
