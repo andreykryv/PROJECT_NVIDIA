@@ -44,7 +44,7 @@ void ChartWidget::setupTabs() {
 }
 
 void ChartWidget::createBarChart() {
-    barChart = new ComparisonBarChart();
+    barChart = new SortBench::ComparisonBarChart();
     barChart->setTitle("Время выполнения (мс)");
     
     auto *chartView = new QChartView(barChart->chart());
@@ -55,7 +55,7 @@ void ChartWidget::createBarChart() {
 }
 
 void ChartWidget::createScatterChart() {
-    scatterChart = new ScatterPlotChart();
+    scatterChart = new SortBench::ScatterPlotChart();
     scatterChart->setTitle("Масштабируемость");
     
     auto *chartView = new QChartView(scatterChart->chart());
@@ -136,7 +136,7 @@ void ChartWidget::createGPUDetailChart() {
     tabs->addTab(gpuDetailView, "Детали GPU");
 }
 
-void ChartWidget::addResult(const BenchmarkResult& result) {
+void ChartWidget::addResult(const SortBench::BenchmarkResult& result) {
     results.append(result);
     
     // Ограничиваем количество результатов

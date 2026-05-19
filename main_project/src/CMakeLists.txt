@@ -217,12 +217,14 @@ if(Qt6_FOUND)
         Qt6::Widgets
         Qt6::Charts
         Qt6::Concurrent
+        Qt6::Svg
     )
 else()
     target_link_libraries(SortBench PRIVATE
         Qt5::Widgets
         Qt5::Charts
         Qt5::Concurrent
+        Qt5::Svg
     )
 endif()
 
