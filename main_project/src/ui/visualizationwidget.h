@@ -8,24 +8,15 @@
 #include <QLabel>
 #include <atomic>
 #include "../core/sortparams.h"
+#include "../core/sortbenchengine.h"
 
 namespace SortBench {
 enum class HighlightType;
 class ColorScheme;
 }
 
-struct VisFrame {
-    std::vector<float> values;
-    std::vector<int> highlightedIdx;
-    SortBench::HighlightType highlightType = SortBench::HighlightType::None;
-    int pivotIndex = -1;
-    int sortedBoundary = -1;
-    long long comparisons = 0;
-    long long swaps = 0;
-    long long arrayAccesses = 0;
-    QString algoName;
-    bool isGpu = false;
-};
+// Используем VisFrame из SortBenchEngine
+using VisFrame = SortBench::VisFrame;
 
 class VisualizationWidget : public QWidget
 {

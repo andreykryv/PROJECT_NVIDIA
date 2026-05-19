@@ -29,9 +29,11 @@ namespace SortBench {
 class ProgressPanel;
 class StatsPanel;
 class SortBenchEngine;
-class SettingsDialog;
-class AboutDialog;
 }
+
+// Include для диалогов - они НЕ в namespace SortBench
+#include "ui/settingsdialog.h"
+#include "ui/aboutdialog.h"
 
 // Класс MainWindow помещаем в пространство имён SortBench
 namespace SortBench {
