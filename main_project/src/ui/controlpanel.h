@@ -13,6 +13,8 @@
 #include <QHBoxLayout>
 #include "../core/sortparams.h"
 
+namespace SortBench {
+
 class ControlPanel : public QWidget
 {
     Q_OBJECT
@@ -108,5 +110,7 @@ private:
     void checkCudaAvailability();
     void showAlgorithmInfo();
 };
+
+} // namespace SortBench
 
 #endif // CONTROLPANEL_H
