@@ -48,8 +48,8 @@ MainWindow::MainWindow(QWidget *parent)
     workerThread->start();
 
     controlPanel = new SortBench::ControlPanel(this);
-    vizWidget = new VisualizationWidget(this);
-    chartWidget = new ChartWidget(this);
+    vizWidget = new SortBench::VisualizationWidget(this);
+    chartWidget = new SortBench::ChartWidget(this);
     progressPanel = new SortBench::ProgressPanel(this);
     statsPanel = new SortBench::StatsPanel(this);
 
@@ -190,7 +190,7 @@ void MainWindow::connectSignals()
     connect(engine, &SortBenchEngine::progressUpdated,
             progressPanel, &SortBench::ProgressPanel::setProgress);
     connect(engine, &SortBenchEngine::frameReady,
-            vizWidget, &VisualizationWidget::renderFrame);
+            vizWidget, &SortBench::VisualizationWidget::renderFrame);
     connect(engine, &SortBenchEngine::benchmarkFinished,
             this, &MainWindow::onBenchmarkFinished);
     connect(engine, &SortBenchEngine::logMessage,
