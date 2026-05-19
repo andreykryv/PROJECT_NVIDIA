@@ -12,11 +12,8 @@
 #include <QtCharts/QScatterSeries>
 #include <QtCharts/QAreaSeries>
 #include "../core/benchmarkresult.h"
-
-namespace SortBench {
-class ComparisonBarChart;
-class ScatterPlotChart;
-}
+#include "charts/comparisonbarchart.h"
+#include "charts/scatterplotchart.h"
 
 class ChartWidget : public QWidget
 {
@@ -50,8 +47,8 @@ private:
     QTabWidget *tabs;
     
     // Charts
-    ComparisonBarChart *barChart;
-    ScatterPlotChart *scatterChart;
+    SortBench::ComparisonBarChart *barChart;
+    SortBench::ScatterPlotChart *scatterChart;
     QChartView *speedupView;
     QChartView *gpuDetailView;
     
