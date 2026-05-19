@@ -14,7 +14,6 @@
 #include <QDateTime>
 #include <QFile>
 #include <QSvgGenerator>
-#include <QPrinter>
 #include <QPainter>
 
 ChartWidget::ChartWidget(QWidget *parent)
@@ -271,7 +270,8 @@ void ChartWidget::updateGPUDetailChart() {
     if (gpuResults.isEmpty()) return;
     
     // Добавляем данные для каждого результата
-    for (const auto *res : gpuResults) {
+    for (int i = 0; i < gpuResults.size(); ++i) {
+        const auto *res = gpuResults[i];
         sets[0]->append(res->h2dTimeMs);      // H2D
         sets[1]->append(res->kernelTimeMs);   // Kernel
         sets[2]->append(res->d2hTimeMs);      // D2H
@@ -282,8 +282,9 @@ void ChartWidget::updateGPUDetailChart() {
     auto *axisX = qobject_cast<QBarCategoryAxis*>(gpuDetailChart->axes(Qt::Horizontal).first());
     if (axisX) {
         axisX->clear();
-        for (const auto *res : gpuResults) {
-            axisX->append(toString(res->params.cpuAlgorithm).left(15));
+        for (int i = 0; i < gpuResults.size(); ++i) {
+            const auto *res = gpuResults[i];
+            axisX->append(SortBench::toString(res->params.cpuAlgorithm).left(15));
         }
     }
 }

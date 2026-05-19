@@ -36,7 +36,9 @@ SortBenchEngine::SortBenchEngine(QObject *parent)
 
 SortBenchEngine::~SortBenchEngine() {
     delete m_cpuSorter;
+#ifdef USE_CUDA
     delete m_gpuSorter;
+#endif
 }
 
 void SortBenchEngine::startBenchmark(const SortParams& params) {
@@ -80,7 +82,7 @@ void SortBenchEngine::generateArray() {
     
     switch (m_currentParams.dataType) {
         case DataType::Int32: {
-            auto data = ArrayGenerator<int32_t>::generate(
+            auto data = ArrayGenerator::generate<int32_t>(
                 m_currentParams.arraySize, 
                 m_currentParams.distribution, 
                 m_currentParams.randomSeed);
@@ -88,7 +90,7 @@ void SortBenchEngine::generateArray() {
             break;
         }
         case DataType::Int64: {
-            auto data = ArrayGenerator<int64_t>::generate(
+            auto data = ArrayGenerator::generate<int64_t>(
                 m_currentParams.arraySize, 
                 m_currentParams.distribution, 
                 m_currentParams.randomSeed);
@@ -96,7 +98,7 @@ void SortBenchEngine::generateArray() {
             break;
         }
         case DataType::Float: {
-            auto data = ArrayGenerator<float>::generate(
+            auto data = ArrayGenerator::generate<float>(
                 m_currentParams.arraySize, 
                 m_currentParams.distribution, 
                 m_currentParams.randomSeed);
@@ -104,7 +106,7 @@ void SortBenchEngine::generateArray() {
             break;
         }
         case DataType::Double: {
-            auto data = ArrayGenerator<double>::generate(
+            auto data = ArrayGenerator::generate<double>(
                 m_currentParams.arraySize, 
                 m_currentParams.distribution, 
                 m_currentParams.randomSeed);
@@ -147,7 +149,7 @@ void SortBenchEngine::runCpuSort() {
         switch (m_currentParams.dataType) {
             case DataType::Int32: {
                 const auto* typedData = static_cast<const int32_t*>(data);
-                auto [minVal, maxVal] = ArrayGenerator<int32_t>::minMax(
+                auto [minVal, maxVal] = ArrayGenerator::minMax(
                     std::vector<int32_t>(typedData, typedData + size));
                 float range = maxVal - minVal;
                 if (range > 0) {
@@ -160,7 +162,7 @@ void SortBenchEngine::runCpuSort() {
             }
             case DataType::Int64: {
                 const auto* typedData = static_cast<const int64_t*>(data);
-                auto [minVal, maxVal] = ArrayGenerator<int64_t>::minMax(
+                auto [minVal, maxVal] = ArrayGenerator::minMax(
                     std::vector<int64_t>(typedData, typedData + size));
                 float range = maxVal - minVal;
                 if (range > 0) {
@@ -173,7 +175,7 @@ void SortBenchEngine::runCpuSort() {
             }
             case DataType::Float: {
                 const auto* typedData = static_cast<const float*>(data);
-                auto [minVal, maxVal] = ArrayGenerator<float>::minMax(
+                auto [minVal, maxVal] = ArrayGenerator::minMax(
                     std::vector<float>(typedData, typedData + size));
                 float range = maxVal - minVal;
                 if (range > 0) {
@@ -186,7 +188,7 @@ void SortBenchEngine::runCpuSort() {
             }
             case DataType::Double: {
                 const auto* typedData = static_cast<const double*>(data);
-                auto [minVal, maxVal] = ArrayGenerator<double>::minMax(
+                auto [minVal, maxVal] = ArrayGenerator::minMax(
                     std::vector<double>(typedData, typedData + size));
                 float range = maxVal - minVal;
                 if (range > 0) {
@@ -371,7 +373,7 @@ void SortBenchEngine::runGpuSort() {
                 reinterpret_cast<const int32_t*>(m_originalData.data()),
                 reinterpret_cast<int32_t*>(m_gpuResult.data()),
                 m_currentParams.arraySize,
-                m_currentParams.gpuAlgorithm,
+                static_cast<int>(m_currentParams.gpuAlgorithm),
                 m_currentParams.cudaBlockSize,
                 m_currentParams.cudaStreams);
             break;
@@ -380,7 +382,7 @@ void SortBenchEngine::runGpuSort() {
                 reinterpret_cast<const int64_t*>(m_originalData.data()),
                 reinterpret_cast<int64_t*>(m_gpuResult.data()),
                 m_currentParams.arraySize,
-                m_currentParams.gpuAlgorithm,
+                static_cast<int>(m_currentParams.gpuAlgorithm),
                 m_currentParams.cudaBlockSize,
                 m_currentParams.cudaStreams);
             break;
@@ -389,7 +391,7 @@ void SortBenchEngine::runGpuSort() {
                 reinterpret_cast<const float*>(m_originalData.data()),
                 reinterpret_cast<float*>(m_gpuResult.data()),
                 m_currentParams.arraySize,
-                m_currentParams.gpuAlgorithm,
+                static_cast<int>(m_currentParams.gpuAlgorithm),
                 m_currentParams.cudaBlockSize,
                 m_currentParams.cudaStreams);
             break;
@@ -398,7 +400,7 @@ void SortBenchEngine::runGpuSort() {
                 reinterpret_cast<const double*>(m_originalData.data()),
                 reinterpret_cast<double*>(m_gpuResult.data()),
                 m_currentParams.arraySize,
-                m_currentParams.gpuAlgorithm,
+                static_cast<int>(m_currentParams.gpuAlgorithm),
                 m_currentParams.cudaBlockSize,
                 m_currentParams.cudaStreams);
             break;
@@ -423,29 +425,34 @@ void SortBenchEngine::verifyResults() {
     
     // Проверка CPU результата
     switch (m_currentParams.dataType) {
-        case DataType::Int32:
-           {
-    size_t n = m_currentParams.arraySize;
-    std::vector<int32_t> typed(n);
-    std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(int32_t));
-    m_partialResult.isSorted = ArrayGenerator<int32_t>::isSorted(typed);
-}
+        case DataType::Int32: {
+            size_t n = m_currentParams.arraySize;
+            std::vector<int32_t> typed(n);
+            std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(int32_t));
+            m_partialResult.isSorted = ArrayGenerator::isSorted(typed);
             break;
-        case DataType::Int64:
-            m_partialResult.isSorted = ArrayGenerator<int64_t>::isSorted(
-                *reinterpret_cast<const std::vector<int64_t>*>(
-                    static_cast<const void*>(&m_cpuResult)));
+        }
+        case DataType::Int64: {
+            size_t n = m_currentParams.arraySize;
+            std::vector<int64_t> typed(n);
+            std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(int64_t));
+            m_partialResult.isSorted = ArrayGenerator::isSorted(typed);
             break;
-        case DataType::Float:
-            m_partialResult.isSorted = ArrayGenerator<float>::isSorted(
-                *reinterpret_cast<const std::vector<float>*>(
-                    static_cast<const void*>(&m_cpuResult)));
+        }
+        case DataType::Float: {
+            size_t n = m_currentParams.arraySize;
+            std::vector<float> typed(n);
+            std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(float));
+            m_partialResult.isSorted = ArrayGenerator::isSorted(typed);
             break;
-        case DataType::Double:
-            m_partialResult.isSorted = ArrayGenerator<double>::isSorted(
-                *reinterpret_cast<const std::vector<double>*>(
-                    static_cast<const void*>(&m_cpuResult)));
+        }
+        case DataType::Double: {
+            size_t n = m_currentParams.arraySize;
+            std::vector<double> typed(n);
+            std::memcpy(typed.data(), m_cpuResult.data(), n * sizeof(double));
+            m_partialResult.isSorted = ArrayGenerator::isSorted(typed);
             break;
+        }
     }
     
     // Сравнение CPU и GPU результатов
@@ -481,14 +488,14 @@ void SortBenchEngine::collectSystemInfo() {
 }
 
 void SortBenchEngine::pollGpuMemory() {
+#ifdef USE_CUDA
     if (m_gpuSorter && isRunning()) {
         size_t used = m_gpuSorter->currentDeviceMemUsed();
         size_t total = 0;
-        #ifdef USE_CUDA
         cudaMemGetInfo(nullptr, &total);
-        #endif
         emit gpuMemoryUpdated(used, total);
     }
+#endif
 }
 
 void SortBenchEngine::checkPausePoint() {

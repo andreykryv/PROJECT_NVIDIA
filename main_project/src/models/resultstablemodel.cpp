@@ -1,5 +1,6 @@
 #include "resultstablemodel.h"
 #include <algorithm>
+#include <QBrush>
 
 namespace SortBench {
 
@@ -79,8 +80,8 @@ QVariant ResultsTableModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::TextAlignmentRole) {
         if (index.column() >= ColCpuTime && index.column() <= ColSpeedup)
-            return Qt::AlignRight | Qt::AlignVCenter;
-        return Qt::AlignLeft | Qt::AlignVCenter;
+            return static_cast<int>(Qt::AlignRight | Qt::AlignVCenter);
+        return static_cast<int>(Qt::AlignLeft | Qt::AlignVCenter);
     }
 
     if (role == Qt::UserRole) {

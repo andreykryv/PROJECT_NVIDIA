@@ -86,9 +86,9 @@ option(SORTBENCH_DEBUG_ANIMATION "Подробное логирование ан
 set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный размер массива")
 
 # Поиск Qt (предпочтение Qt6, затем Qt5)
-find_package(Qt6 COMPONENTS Widgets Charts Concurrent QUIET)
+find_package(Qt6 COMPONENTS Widgets Charts Concurrent Svg QUIET)
 if(NOT Qt6_FOUND)
-    find_package(Qt5 REQUIRED COMPONENTS Widgets Charts Concurrent)
+    find_package(Qt5 REQUIRED COMPONENTS Widgets Charts Concurrent Svg)
 endif()
 
 # Поиск CUDA Toolkit (только если включена поддержка CUDA)
