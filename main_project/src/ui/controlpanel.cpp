@@ -20,8 +20,7 @@
 
 namespace SortBench {
 
-// FIX: вспомогательные функции преобразования строки → enum
-// (ранее использовались как неопределённые глобальные функции)
+// вспомогательные функции преобразования строки → enum
 static CpuAlgorithm stringToCpuAlgorithm(const QString &name) {
     if (name == "Bubble Sort")  return CpuAlgorithm::BubbleSort;
     if (name == "Quick Sort")   return CpuAlgorithm::QuickSort;
@@ -244,8 +243,6 @@ void ControlPanel::populateAlgorithms() {
 void ControlPanel::checkCudaAvailability() {
     // FIX: было CudaDeviceInfo::hasCudaDevice() → isCudaAvailable()
     if (!CudaDeviceInfo::isCudaAvailable()) {
-        static bool hasCudaDevice() { return isCudaAvailable(); }   // для старых вызовов
-static CudaDeviceProperties getDeviceProperties(int idx) { return getProperties(idx); }
         m_gpuAlgorithmCombo->setEnabled(false);
         m_enableGpuCheck->setEnabled(false);
         m_enableGpuCheck->setChecked(false);
@@ -313,8 +310,8 @@ void ControlPanel::connectSignals() {
     connect(m_configureBatchBtn, &QPushButton::clicked, this, &ControlPanel::onConfigureBatchClicked);
 }
 
-SortParams ControlPanel::buildParams() const {
-    SortParams params;
+SortBench::SortParams ControlPanel::buildParams() const {
+    SortBench::SortParams params;
 
     // FIX: используем локальную stringToCpuAlgorithm (принимает QString)
     params.cpuAlgorithm = stringToCpuAlgorithm(m_cpuAlgorithmCombo->currentText());
@@ -330,8 +327,8 @@ SortParams ControlPanel::buildParams() const {
     }
 
     params.arraySize    = m_arraySizeSpinBox->value();
-    params.dataType     = static_cast<DataType>(m_dataTypeCombo->currentIndex());
-    params.distribution = static_cast<Distribution>(m_distributionCombo->currentIndex());
+    params.dataType     = static_cast<SortBench::DataType>(m_dataTypeCombo->currentIndex());
+    params.distribution = static_cast<SortBench::Distribution>(m_distributionCombo->currentIndex());
 
     if (m_autoSeedCheck->isChecked()) {
         std::random_device rd;
@@ -343,13 +340,13 @@ SortParams ControlPanel::buildParams() const {
     params.animationFPS     = m_animSpeedSlider->value();
     params.showComparisons  = m_showComparisonsCheck->isChecked();
     params.showAccessCount  = m_showAccessCountCheck->isChecked();
-    params.colorScheme      = static_cast<ColorSchemeType>(m_colorSchemeCombo->currentIndex());
+    params.colorScheme      = static_cast<SortBench::ColorSchemeType>(m_colorSchemeCombo->currentIndex());
     params.maxVisElements   = m_maxVisElementsSpin->value();
 
     return params;
 }
 
-SortParams ControlPanel::getCurrentParams() const {
+SortBench::SortParams ControlPanel::getCurrentParams() const {
     return buildParams();
 }
 
@@ -398,7 +395,7 @@ void ControlPanel::showAlgorithmInfo() {
     QString algoName = m_cpuAlgorithmCombo->currentText();
     const auto &registry = AlgorithmRegistry::instance();
     // FIX: используем локальный stringToCpuAlgorithm (принимает QString)
-    AlgorithmInfo info = registry.getInfo(stringToCpuAlgorithm(algoName));
+    SortBench::AlgorithmInfo info = registry.getInfo(stringToCpuAlgorithm(algoName));
 
     // FIX: info.name — это QString, isEmpty() вместо empty()
     if (!info.name.isEmpty()) {
