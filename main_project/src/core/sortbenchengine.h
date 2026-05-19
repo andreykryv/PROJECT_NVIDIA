@@ -12,14 +12,29 @@
 #include "sortparams.h"
 #include "benchmarkresult.h"
 #include "cpusorter.h"
+#include "arraygenerator.h"
+
+#ifdef USE_CUDA
+#include "cudasorter.h"
+#endif
 
 namespace SortBench {
 
 // Forward declarations
-
+#ifndef USE_CUDA
 class CudaSorter;
+#endif
 
-
+// GpuTimings forward declaration for non-CUDA builds
+#ifndef USE_CUDA
+struct GpuTimings {
+    double h2dMs = 0.0;
+    double kernelMs = 0.0;
+    double d2hMs = 0.0;
+    double syncMs = 0.0;
+    double totalMs() const { return h2dMs + kernelMs + d2hMs + syncMs; }
+};
+#endif
 
 // Кадр визуализации
 struct VisFrame {
@@ -29,13 +44,13 @@ struct VisFrame {
     long long comparisons;                 // счётчик сравнений
     long long swaps;                       // счётчик перестановок
     int totalElements;                     // всего элементов
-    
+
     VisFrame() : highlightType(HighlightType::None), comparisons(0), swaps(0), totalElements(0) {}
 };
 
 class SortBenchEngine : public QObject {
     Q_OBJECT
-    
+
 
 public:
     enum class State {
@@ -84,31 +99,31 @@ private:
     void runGpuSort();
     void verifyResults();
     void collectSystemInfo();
-    
+
     template<typename T>
-    void emitFrame(const std::vector<T>& data, const QList<int>& highlighted, 
+    void emitFrame(const std::vector<T>& data, const QList<int>& highlighted,
                    HighlightType type, long long cmp, long long swaps);
-    
+
     void checkPausePoint();
-    
+
     SortParams m_currentParams;
     State m_state = State::Idle;
     std::atomic<bool> m_stopRequested{false};
     std::atomic<bool> m_pauseRequested{false};
-    
+
     CpuSorter* m_cpuSorter = nullptr;
     CudaSorter* m_gpuSorter = nullptr;
-    
+
     QElapsedTimer m_stageTimer;
     BenchmarkResult m_partialResult;
     QTimer* m_gpuMemPollTimer = nullptr;
-    
+
     // Данные для сортировки
     std::vector<uint8_t> m_originalData;  // сырые данные
     std::vector<uint8_t> m_cpuResult;
     std::vector<uint8_t> m_gpuResult;
     size_t m_elementSize = 0;
-    
+
     // Для анимации
     qint64 m_lastFrameTime = 0;
     int m_frameIntervalMs = 16;  // ~60 FPS
