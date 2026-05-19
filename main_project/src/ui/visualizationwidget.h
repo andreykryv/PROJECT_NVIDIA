@@ -85,4 +85,6 @@ private:
     qint64 lastFrameTime = 0;
 };
 
+} // namespace SortBench
+
 #endif // VISUALIZATIONWIDGET_H
