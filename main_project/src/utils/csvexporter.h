@@ -75,7 +75,7 @@ public:
     
 private:
     // Парсинг одной строки CSV
-    static BenchmarkResult parseCsvLine(const QString& line);
+    static SortBench::BenchmarkResult parseCsvLine(const QString& line);
 };
 
 #endif // CSV_EXPORTER_H

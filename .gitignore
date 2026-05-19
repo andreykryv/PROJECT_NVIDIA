@@ -1,22 +1,29 @@
 ```
 # Build artifacts
+CMakeFiles/
+cmake-build-*/
+Makefile
 *.o
-*.obj
-*.exe
-*.dll
-*.so
 *.a
-*.out
+*.so
+*.dylib
+*.dll
+*.exe
+build/
+dist/
 
 # Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
-.gradle/
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
 
 # Editors
 .vscode/
@@ -24,42 +31,44 @@ target/
 *.swp
 *.swo
 
-# System
+# OS
 .DS_Store
 Thumbs.db
-.env
-.env.local
-*.env.*
-
-# Logs
-*.log
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Compressed files
-*.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+# C/C++
+*.out
+*.obj
+*.ilk
+*.pdb
+*.gch
+*.pch
+*.idb
+*.nib
+*.tlog
+*.exp
+*.lib
+*.sln
+*.vcxproj
+*.vcproj
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Qt/MOC files
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# CMake
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
 ```

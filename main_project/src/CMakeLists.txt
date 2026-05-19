@@ -78,17 +78,6 @@ set(SORTBENCH_SOURCES
     cpu/radixsort.cpp
     cpu/stdsort.cpp
 
-    # GPU сортировки
-    gpu/cudasorter.cpp
-    gpu/cudamemorymanager.cpp
-
-    # CUDA файлы
-    gpu/bitonicsort.cu
-    gpu/cudadeviceinfo.cu
-    gpu/cudaquicksort.cu
-    gpu/cudautils.cu
-    gpu/thrustradixsort.cu
-
     # Charts
     charts/benchmarkchartview.cpp
     charts/comparisonbarchart.cpp
@@ -121,6 +110,22 @@ set(SORTBENCH_SOURCES
     visualization/sortvisualizer.cpp
 )
 
+# GPU файлы добавляются только если включена поддержка CUDA
+if(ENABLE_CUDA)
+    list(APPEND SORTBENCH_SOURCES
+        # GPU сортировки
+        gpu/cudasorter.cpp
+        gpu/cudamemorymanager.cpp
+
+        # CUDA файлы
+        gpu/bitonicsort.cu
+        gpu/cudadeviceinfo.cu
+        gpu/cudaquicksort.cu
+        gpu/cudautils.cu
+        gpu/thrustradixsort.cu
+    )
+endif()
+
 # Список заголовочных файлов
 set(SORTBENCH_HEADERS
     mainwindow.h
@@ -139,15 +144,6 @@ set(SORTBENCH_HEADERS
     cpu/heapsort.h
     cpu/radixsort.h
     cpu/stdsort.h
-
-    gpu/cudasorter.h
-    gpu/cudamemorymanager.h
-    gpu/bitonicsort.cuh
-    gpu/cudadeviceinfo.cuh
-    gpu/cudadeviceinfo.h
-    gpu/cudaquicksort.cuh
-    gpu/cudautils.cuh
-    gpu/thrustradixsort.cuh
 
     charts/benchmarkchartview.h
     charts/comparisonbarchart.h
@@ -176,15 +172,31 @@ set(SORTBENCH_HEADERS
     visualization/sortvisualizer.h
 )
 
-# Указываем CMake, что .cu файлы — это CUDA
-set_source_files_properties(
-    gpu/bitonicsort.cu
-    gpu/cudadeviceinfo.cu
-    gpu/cudaquicksort.cu
-    gpu/cudautils.cu
-    gpu/thrustradixsort.cu
-    PROPERTIES LANGUAGE CUDA
-)
+# GPU заголовки добавляются только если включена поддержка CUDA
+if(ENABLE_CUDA)
+    list(APPEND SORTBENCH_HEADERS
+        gpu/cudasorter.h
+        gpu/cudamemorymanager.h
+        gpu/bitonicsort.cuh
+        gpu/cudadeviceinfo.cuh
+        gpu/cudadeviceinfo.h
+        gpu/cudaquicksort.cuh
+        gpu/cudautils.cuh
+        gpu/thrustradixsort.cuh
+    )
+endif()
+
+# Указываем CMake, что .cu файлы — это CUDA (только если ENABLE_CUDA)
+if(ENABLE_CUDA)
+    set_source_files_properties(
+        gpu/bitonicsort.cu
+        gpu/cudadeviceinfo.cu
+        gpu/cudaquicksort.cu
+        gpu/cudautils.cu
+        gpu/thrustradixsort.cu
+        PROPERTIES LANGUAGE CUDA
+    )
+endif()
 
 # Создание исполняемого файла
 if(WIN32)
@@ -204,11 +216,16 @@ target_link_libraries(SortBench PRIVATE
     Qt6::Widgets
     Qt6::Charts
     Qt6::Concurrent
-    CUDA::cudart
-    CUDA::cuda_driver
-    CUDA::cublas
-    CUDA::cufft
 )
+
+if(ENABLE_CUDA)
+    target_link_libraries(SortBench PRIVATE
+        CUDA::cudart
+        CUDA::cuda_driver
+        CUDA::cublas
+        CUDA::cufft
+    )
+endif()
 
 # Добавление ресурсов Qt
 if(TARGET Qt6::Core)
