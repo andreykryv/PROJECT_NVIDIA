@@ -86,7 +86,7 @@ option(SORTBENCH_DEBUG_ANIMATION "Подробное логирование ан
 set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный размер массива")
 
 # Поиск Qt (предпочтение Qt6, затем Qt5)
-set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake;/usr")
+set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake;/usr/lib/qt6;/usr")
 find_package(Qt6 COMPONENTS Widgets Charts Concurrent Svg QUIET)
 if(NOT Qt6_FOUND)
     message(FATAL_ERROR "Qt6 not found. Please install qt6-base-dev and qt6-charts-dev")

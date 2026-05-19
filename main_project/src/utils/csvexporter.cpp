@@ -170,7 +170,7 @@ QStringList CsvExporter::parseCsvLine(const QString &line) {
     return fields;
 }
 
-bool CsvExporter::exportWithDialog(QWidget *parent, QList<SortBench::BenchmarkResult> results) {
+bool CsvExporter::exportWithDialog(QWidget *parent, const QList<SortBench::BenchmarkResult> &results) {
     if (results.isEmpty()) {
         qWarning() << "No results to export";
         return false;

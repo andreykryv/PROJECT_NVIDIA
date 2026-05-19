@@ -76,8 +76,8 @@ public:
     static QString escapeCsvField(const QString& field);
     
 private:
-    // Парсинг одной строки CSV
-    static BenchmarkResult parseCsvLine(const QString& line);
+        // Парсинг одной строки CSV на поля
+    static QStringList parseCsvLine(const QString& line);
 };
 
 } // namespace SortBench
