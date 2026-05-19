@@ -1,25 +1,20 @@
 ```
 # Build artifacts
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dll
-*.exe
-*.out
-
-# CMake build directories
 build/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
 Makefile
-cmake_install.cmake
-compile_commands.json
+*.cmake
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
 
 # Dependencies
-node_modules/
 vendor/
 
 # Logs and temp files
@@ -30,15 +25,18 @@ vendor/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# OS files
-.DS_Store
-Thumbs.db
 
 # Environment
 .env
 .env.local
 *.env.*
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
 ```
