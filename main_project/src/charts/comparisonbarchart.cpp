@@ -57,9 +57,26 @@ void ComparisonBarChart::clear()
     m_results.clear();
     m_categories.clear();
     
-    m_cpuSet->clear();
-    m_gpuKernelSet->clear();
-    m_gpuTransferSet->clear();
+    // Очищаем наборы данных путём удаления и повторного добавления
+    m_series->remove(m_cpuSet);
+    m_series->remove(m_gpuKernelSet);
+    m_series->remove(m_gpuTransferSet);
+    
+    delete m_cpuSet;
+    delete m_gpuKernelSet;
+    delete m_gpuTransferSet;
+    
+    m_cpuSet = new QBarSet(tr("CPU"));
+    m_gpuKernelSet = new QBarSet(tr("GPU (kernel)"));
+    m_gpuTransferSet = new QBarSet(tr("GPU (transfer)"));
+    
+    m_cpuSet->setColor(QColor(52, 152, 219));       // синий
+    m_gpuKernelSet->setColor(QColor(39, 174, 96));  // зелёный
+    m_gpuTransferSet->setColor(QColor(127, 140, 141)); // серый
+    
+    m_series->append(m_cpuSet);
+    m_series->append(m_gpuKernelSet);
+    m_series->append(m_gpuTransferSet);
     
     m_axisX->clear();
 }

@@ -13,8 +13,10 @@
 #include <QtCharts/QAreaSeries>
 #include "../core/benchmarkresult.h"
 
+namespace SortBench {
 class ComparisonBarChart;
 class ScatterPlotChart;
+}
 
 class ChartWidget : public QWidget
 {

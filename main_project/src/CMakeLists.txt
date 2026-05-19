@@ -216,6 +216,7 @@ target_link_libraries(SortBench PRIVATE
     Qt6::Widgets
     Qt6::Charts
     Qt6::Concurrent
+    Qt6::Svg
 )
 
 if(ENABLE_CUDA)
