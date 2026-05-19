@@ -2,31 +2,31 @@
 <ui version="4.0">
  <customwidgets>
   <customwidget>
-   <class>SortBench::ControlPanel</class>
+   <class>ControlPanel</class>
    <extends>QWidget</extends>
    <header>ui/controlpanel.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SortBench::VisualizationWidget</class>
+   <class>VisualizationWidget</class>
    <extends>QWidget</extends>
    <header>ui/visualizationwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SortBench::ChartWidget</class>
+   <class>ChartWidget</class>
    <extends>QWidget</extends>
    <header>ui/chartwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SortBench::ProgressPanel</class>
+   <class>ProgressPanel</class>
    <extends>QWidget</extends>
    <header>ui/progresspanel.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SortBench::StatsPanel</class>
+   <class>StatsPanel</class>
    <extends>QWidget</extends>
    <header>ui/statspanel.h</header>
    <container>1</container>

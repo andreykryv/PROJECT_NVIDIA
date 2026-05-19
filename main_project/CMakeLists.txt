@@ -89,7 +89,7 @@ set(SORTBENCH_MAX_ARRAY_SIZE 100000000 CACHE STRING "Максимальный р
 set(CMAKE_PREFIX_PATH "/usr/lib/x86_64-linux-gnu/cmake/Qt6;/usr/lib/x86_64-linux-gnu/cmake")
 find_package(Qt6 COMPONENTS Widgets Charts Concurrent Svg QUIET)
 if(NOT Qt6_FOUND)
-    find_package(Qt5 REQUIRED COMPONENTS Widgets Charts Concurrent Svg)
+    message(FATAL_ERROR "Qt6 not found. Please install qt6-base-dev and qt6-charts-dev")
 endif()
 
 # Поиск CUDA Toolkit (только если включена поддержка CUDA)
