@@ -94,11 +94,11 @@ private:
 
     Ui::MainWindow *ui = nullptr;
 
-    SortBench::ControlPanel *controlPanel = nullptr;
-    SortBench::VisualizationWidget *vizWidget = nullptr;
-    SortBench::ChartWidget *chartWidget = nullptr;
-    SortBench::ProgressPanel *progressPanel = nullptr;
-    SortBench::StatsPanel *statsPanel = nullptr;
+    ControlPanel *controlPanel = nullptr;
+    VisualizationWidget *vizWidget = nullptr;
+    ChartWidget *chartWidget = nullptr;
+    ProgressPanel *progressPanel = nullptr;
+    StatsPanel *statsPanel = nullptr;
     SortBenchEngine *engine = nullptr;
 
     QSplitter *mainSplitter = nullptr;

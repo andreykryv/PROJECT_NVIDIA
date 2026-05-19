@@ -28,6 +28,8 @@ private:
 
 } // namespace SortBench
 
+namespace SortBench {
+
 class ProgressPanel : public QWidget
 {
     Q_OBJECT

@@ -15,6 +15,8 @@
 #include "charts/comparisonbarchart.h"
 #include "charts/scatterplotchart.h"
 
+namespace SortBench {
+
 class ChartWidget : public QWidget
 {
     Q_OBJECT
@@ -23,7 +25,7 @@ public:
     explicit ChartWidget(QWidget *parent = nullptr);
     ~ChartWidget() override = default;
 
-    void addResult(const SortBench::BenchmarkResult& result);
+    void addResult(const BenchmarkResult& result);
     void clearResults();
     void setMaxResults(int max);
     bool exportChart(int tabIndex, const QString& path);
@@ -47,8 +49,8 @@ private:
     QTabWidget *tabs;
     
     // Charts
-    SortBench::ComparisonBarChart *barChart;
-    SortBench::ScatterPlotChart *scatterChart;
+    ComparisonBarChart *barChart;
+    ScatterPlotChart *scatterChart;
     QChartView *speedupView;
     QChartView *gpuDetailView;
     
@@ -56,8 +58,10 @@ private:
     QChart *gpuDetailChart;
     
     // Data
-    QList<SortBench::BenchmarkResult> results;
+    QList<BenchmarkResult> results;
     int maxStoredResults;
 };
+
+} // namespace SortBench
 
 #endif // CHARTWIDGET_H
