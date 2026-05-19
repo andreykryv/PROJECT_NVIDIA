@@ -212,12 +212,19 @@ set_target_properties(SortBench PROPERTIES
 )
 
 # Подключение библиотек
-target_link_libraries(SortBench PRIVATE
-    Qt6::Widgets
-    Qt6::Charts
-    Qt6::Concurrent
-    Qt6::Svg
-)
+if(Qt6_FOUND)
+    target_link_libraries(SortBench PRIVATE
+        Qt6::Widgets
+        Qt6::Charts
+        Qt6::Concurrent
+    )
+else()
+    target_link_libraries(SortBench PRIVATE
+        Qt5::Widgets
+        Qt5::Charts
+        Qt5::Concurrent
+    )
+endif()
 
 if(ENABLE_CUDA)
     target_link_libraries(SortBench PRIVATE

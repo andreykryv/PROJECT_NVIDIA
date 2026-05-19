@@ -4,9 +4,8 @@
 *.obj
 *.a
 *.lib
-*.dll
 *.so
-*.dylib
+*.dll
 *.exe
 *.out
 
@@ -15,53 +14,31 @@ build/
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt
-cmake_install.cmake
 Makefile
-
-# Qt/MOC files
-moc_*.cpp
-moc_*.h
-qrc_*.cpp
-ui_*.h
+cmake_install.cmake
+compile_commands.json
 
 # Dependencies
 node_modules/
 vendor/
 
-# Logs
+# Logs and temp files
 *.log
-
-# Temporary files
 *.tmp
-*.temp
-*~
+*.swp
 
-# Environment
-.env
-.env.local
-.env.*
-
-# IDE
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Python (if applicable)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-.PyInstaller/
+# Environment
+.env
+.env.local
+*.env.*
 ```

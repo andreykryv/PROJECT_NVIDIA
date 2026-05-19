@@ -1,12 +1,14 @@
 #include "chartwidget.h"
 #include "charts/comparisonbarchart.h"
 #include "charts/scatterplotchart.h"
+#include "core/sortparams.h"
 #include <QVBoxLayout>
 #include <QChartView>
 #include <QBarSeries>
 #include <QBarSet>
 #include <QBarCategoryAxis>
 #include <QValueAxis>
+#include <QLogValueAxis>
 #include <QLineSeries>
 #include <QScatterSeries>
 #include <QAreaSeries>
@@ -78,9 +80,10 @@ void ChartWidget::createSpeedupChart() {
     baseline->setPen(baselinePen);
     speedupChart->addSeries(baseline);
     
-    auto *axisX = new QValueAxis();
+    auto *axisX = new QLogValueAxis();
     axisX->setTitleText("Размер массива");
-    axisX->setType(QValueAxis::AxisTypeLog);
+    axisX->setMin(100);
+    axisX->setMax(100000000);
     speedupChart->addAxis(axisX, Qt::AlignBottom);
     
     auto *axisY = new QValueAxis();
@@ -166,12 +169,12 @@ void ChartWidget::rebuildCharts() {
 
 void ChartWidget::updateBarChart() {
     if (!barChart) return;
-    barChart->updateData(results);
+    barChart->setResults(results);
 }
 
 void ChartWidget::updateScatterChart() {
     if (!scatterChart) return;
-    scatterChart->updateData(results);
+    scatterChart->setResults(results);
 }
 
 void ChartWidget::updateSpeedupChart() {
@@ -193,9 +196,9 @@ void ChartWidget::updateSpeedupChart() {
     }
     
     // Группируем результаты по размеру массива
-    QMap<int, QList<const BenchmarkResult*>> bySize;
+    QMap<int, QList<const SortBench::BenchmarkResult*>> bySize;
     for (const auto& res : results) {
-        bySize[res.arraySize].append(&res);
+        bySize[res.params.arraySize].append(&res);
     }
     
     // Создаём серию для каждого алгоритма
@@ -204,14 +207,15 @@ void ChartWidget::updateSpeedupChart() {
     for (auto it = bySize.begin(); it != bySize.end(); ++it) {
         int size = it.key();
         for (const auto *res : it.value()) {
-            QString algoName = toString(res->params.cpuAlgorithm);
+            QString algoName = SortBench::toString(res->params.cpuAlgorithm);
             
             if (!algoSeries.contains(algoName)) {
                 algoSeries[algoName] = new QLineSeries();
                 algoSeries[algoName]->setName(algoName);
                 
-                // Цвет в зависимости от CPU/GPU
-                if (res->isGpu) {
+                // Цвет в зависимости от CPU/GPU - определяем по gpuKernelTimeMs
+                bool isGpu = res->gpuKernelTimeMs > 0.0;
+                if (isGpu) {
                     algoSeries[algoName]->setPen(QPen(QColor("#27AE60"), 2));
                 } else {
                     algoSeries[algoName]->setPen(QPen(QColor("#3498DB"), 2));
@@ -231,11 +235,12 @@ void ChartWidget::updateSpeedupChart() {
         // Находим CPU и GPU времена для этого размера
         double cpuTime = -1, gpuTime = -1;
         for (const auto *res : it.value()) {
-            if (!res->isGpu && cpuTime < 0) {
-                cpuTime = res->totalTimeMs;
+            bool isGpu = res->gpuKernelTimeMs > 0.0;
+            if (!isGpu && cpuTime < 0) {
+                cpuTime = res->cpuTimeMs;
             }
-            if (res->isGpu && gpuTime < 0) {
-                gpuTime = res->totalTimeMs;
+            if (isGpu && gpuTime < 0) {
+                gpuTime = res->gpuTotalTimeMs;
             }
         }
         
@@ -255,14 +260,18 @@ void ChartWidget::updateGPUDetailChart() {
     if (!stackedSeries || stackedSeries->barSets().isEmpty()) return;
     
     auto sets = stackedSeries->barSets();
+    // Очищаем наборы, создавая новые значения (в Qt6 нет clear())
     for (auto *barSet : sets) {
-        barSet->clear();
+        // Удаляем все значения и добавляем заново
+        while (barSet->count() > 0) {
+            barSet->remove(0);
+        }
     }
     
-    // Фильтруем только GPU результаты
-    QList<const BenchmarkResult*> gpuResults;
+    // Фильтруем только GPU результаты (где gpuKernelTimeMs > 0)
+    QList<const SortBench::BenchmarkResult*> gpuResults;
     for (const auto& res : results) {
-        if (res.isGpu) {
+        if (res.gpuKernelTimeMs > 0.0) {
             gpuResults.append(&res);
         }
     }
@@ -272,10 +281,10 @@ void ChartWidget::updateGPUDetailChart() {
     // Добавляем данные для каждого результата
     for (int i = 0; i < gpuResults.size(); ++i) {
         const auto *res = gpuResults[i];
-        sets[0]->append(res->h2dTimeMs);      // H2D
-        sets[1]->append(res->kernelTimeMs);   // Kernel
-        sets[2]->append(res->d2hTimeMs);      // D2H
-        sets[3]->append(res->syncTimeMs);     // Sync
+        sets[0]->append(res->gpuH2DTimeMs);      // H2D
+        sets[1]->append(res->gpuKernelTimeMs);   // Kernel
+        sets[2]->append(res->gpuD2HTimeMs);      // D2H
+        sets[3]->append(res->gpuSyncOverheadMs);     // Sync
     }
     
     // Обновляем категории оси X
@@ -309,13 +318,9 @@ bool ChartWidget::exportChart(int tabIndex, const QString& path) {
 }
 
 void ChartWidget::highlightAlgorithm(const QString& name) {
-    // Подсветка серии с данным именем
-    if (barChart) {
-        barChart->highlightSeries(name);
-    }
-    if (scatterChart) {
-        scatterChart->highlightSeries(name);
-    }
+    // Подсветка серии с данным именем - заглушка, т.к. в Qt Charts нет прямой поддержки
+    Q_UNUSED(name);
+    // Можно реализовать через изменение цвета или маркеров серий при необходимости
 }
 
 void ChartWidget::setupChartTheme(bool isDark) {
