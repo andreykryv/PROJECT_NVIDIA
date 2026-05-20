@@ -3,12 +3,22 @@
 
 #include <vector>
 #include <cuda_runtime.h>
-#include "sortparams.h"
 
 // Этот заголовок используется как в CUDA (.cu), так и в обычном C++ (.cpp) файлах
-// В CUDA-файлах мы не можем использовать QObject, поэтому определяем только CUDA-часть
+// В CUDA-файлах мы не можем использовать QObject и другие Qt-классы,
+// поэтому определяем только CUDA-совместимые типы
 
 namespace SortBench {
+
+// CUDA-совместимый enum для GPU алгоритмов
+// Должен быть синхронизирован с GpuAlgorithm из sortparams.h
+enum class GpuAlgorithmCuda {
+    BitonicSort = 0,
+    ThrustRadixSort = 1,
+    GpuQuickSort = 2,
+    CubDeviceSort = 3,
+    None = 4
+};
 
 struct GpuTimings {
     float h2dMs = 0.0f;      // Host-to-Device transfer time
@@ -48,7 +58,7 @@ public:
     void freeDeviceBuffers();
     bool isReady() const { return m_ready; }
     size_t currentDeviceMemUsed() const { return m_deviceMemUsed; }
-    
+
 protected:
     int m_deviceIndex;
     bool m_ready;
@@ -56,10 +66,10 @@ protected:
     std::vector<cudaStream_t> m_streams;
     cudaEvent_t m_startEvent;
     cudaEvent_t m_endEvent;
-    
+
     void* m_d_input;
     void* m_d_output;
-    
+
     bool initCuda(int deviceIndex);
 };
 
