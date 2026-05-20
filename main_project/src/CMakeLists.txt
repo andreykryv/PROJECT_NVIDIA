@@ -125,6 +125,11 @@ if(ENABLE_CUDA)
         gpu/cudautils.cu
         gpu/thrustradixsort.cu
     )
+else()
+    # Добавляем заглушку для CUDA-функций когда CUDA отключена
+    list(APPEND SORTBENCH_SOURCES
+        gpu/cudadeviceinfo_stub.cpp
+    )
 endif()
 
 # Список заголовочных файлов

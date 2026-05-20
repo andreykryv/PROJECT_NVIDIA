@@ -260,6 +260,22 @@ void MainWindow::onResetAll()
     m_statusBar->showMessage(tr("Сброшено"), 2000);
 }
 
+void MainWindow::onAlgorithmChanged()
+{
+    // Обработка смены алгоритма
+}
+
+void MainWindow::onArraySizeChanged(int size)
+{
+    Q_UNUSED(size);
+    // Обработка изменения размера массива
+}
+
+void MainWindow::onAnimationSpeedChanged(int speed)
+{
+    vizWidget->setAnimationSpeed(speed);
+}
+
 void MainWindow::onBenchmarkFinished(const SortBench::BenchmarkResult &result)
 {
     controlPanel->setRunning(false);
