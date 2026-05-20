@@ -58,8 +58,12 @@ CudaDeviceProperties CudaDeviceInfo::getProperties(int deviceIndex) {
     props.totalGlobalMem = prop.totalGlobalMem;
     props.sharedMemPerBlock = prop.sharedMemPerBlock;
     
-  // clockRate уже в kHz (килогерцах) во всех версиях CUDA
-    props.clockRateKHz = prop.clockRate;
+  // clockRate удалён в CUDA 13.x, используем значение по умолчанию
+    // Для получения актуальной частоты нужно использовать cudaDeviceGetAttribute
+    // с атрибутом cudaDevAttrClockRate
+    int clockRateKHz = 0;
+    cudaDeviceGetAttribute(&clockRateKHz, cudaDevAttrClockRate, deviceIndex);
+    props.clockRateKHz = clockRateKHz;
     
     props.memoryBusWidth = prop.memoryBusWidth;
     props.l2CacheSize = prop.l2CacheSize;

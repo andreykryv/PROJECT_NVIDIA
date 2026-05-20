@@ -14,6 +14,7 @@
 #endif
 
 #if !USE_CUDA
+using namespace SortBench;
 
 bool CudaDeviceInfo::isCudaAvailable() {
     return false;

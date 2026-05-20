@@ -288,9 +288,9 @@ void ControlPanel::connectSignals() {
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_gpuAlgorithmCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_enableCpuCheck, &QCheckBox::stateChanged,
+    connect(m_enableCpuCheck, &QCheckBox::checkStateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_enableGpuCheck, &QCheckBox::stateChanged,
+    connect(m_enableGpuCheck, &QCheckBox::checkStateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_dataTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this]() { emit parametersChanged(buildParams()); });
@@ -298,7 +298,7 @@ void ControlPanel::connectSignals() {
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_randomSeedSpin, QOverload<int>::of(&QSpinBox::valueChanged),
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_autoSeedCheck, &QCheckBox::stateChanged, this, [this]() {
+    connect(m_autoSeedCheck, &QCheckBox::checkStateChanged, this, [this]() {
         m_randomSeedSpin->setEnabled(!m_autoSeedCheck->isChecked());
         emit parametersChanged(buildParams());
     });
@@ -307,9 +307,9 @@ void ControlPanel::connectSignals() {
         emit animationSpeedChanged(value);
         emit parametersChanged(buildParams());
     });
-    connect(m_showComparisonsCheck, &QCheckBox::stateChanged,
+    connect(m_showComparisonsCheck, &QCheckBox::checkStateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_showAccessCountCheck, &QCheckBox::stateChanged,
+    connect(m_showAccessCountCheck, &QCheckBox::checkStateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_colorSchemeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this]() { emit parametersChanged(buildParams()); });

@@ -38,7 +38,7 @@
 #include <QString>
 #include <QList>
 #include <cstddef>
-
+namespace SortBench {
 // Структура свойств CUDA-устройства
 struct CudaDeviceProperties {
     QString name;
@@ -129,10 +129,7 @@ public:
     // Проверить поддержку ray tracing cores
     static bool hasRayTracingCores(int deviceIndex);
     
-private:
-    // Запрет создания экземпляров класса
-    CudaDeviceInfo() = delete;
-    ~CudaDeviceInfo() = delete;
-};
 
+};
+} // namespace SortBench
 #endif // CUDA_DEVICE_INFO_H

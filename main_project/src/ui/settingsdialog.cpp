@@ -20,7 +20,7 @@
 #include "settingsdialog.h"
 #include "utils/settingsmanager.h"
 #include "gpu/cudadeviceinfo.h"
-
+using namespace SortBench;
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDir>
