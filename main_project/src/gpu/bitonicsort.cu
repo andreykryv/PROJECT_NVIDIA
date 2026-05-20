@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdint.h>
 #include <cfloat>
-
+namespace SortBench {
 // CUDA-совместимые функции для получения максимального значения
 template<typename T>
 __device__ __forceinline__ T getMaxValue();
@@ -151,3 +151,4 @@ template void bitonicSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
 #endif
 template void bitonicSortWrapper<float>(float*, int, cudaStream_t);
 template void bitonicSortWrapper<double>(double*, int, cudaStream_t);
+} // namespace SortBench

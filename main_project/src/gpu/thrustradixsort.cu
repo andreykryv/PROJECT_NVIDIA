@@ -2,7 +2,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
-
+namespace SortBench {
 // Wrapper функция для Thrust Radix Sort
 template<typename T>
 void thrustRadixSortWrapper(T* d_data, int size, cudaStream_t stream) {
@@ -25,3 +25,4 @@ template void thrustRadixSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
 #endif
 template void thrustRadixSortWrapper<float>(float*, int, cudaStream_t);
 template void thrustRadixSortWrapper<double>(double*, int, cudaStream_t);
+} // namespace SortBench

@@ -1,6 +1,6 @@
 #include <cuda_runtime.h>
 #include <cub/cub.cuh>
-
+namespace SortBench {
 // Wrapper функция для CUB Device Radix Sort
 template<typename T>
 void cubDeviceSortWrapper(T* d_data, int size, cudaStream_t stream) {
@@ -45,3 +45,4 @@ template void cubDeviceSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
 #endif
 template void cubDeviceSortWrapper<float>(float*, int, cudaStream_t);
 template void cubDeviceSortWrapper<double>(double*, int, cudaStream_t);
+} // namespace SortBench
