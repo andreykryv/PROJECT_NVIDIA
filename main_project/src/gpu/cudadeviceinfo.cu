@@ -58,14 +58,8 @@ CudaDeviceProperties CudaDeviceInfo::getProperties(int deviceIndex) {
     props.totalGlobalMem = prop.totalGlobalMem;
     props.sharedMemPerBlock = prop.sharedMemPerBlock;
     
-    // Проверка наличия поля clockRateKHz через тестирование макроса CUDA_CAPABILITY
-    // В CUDA 12.0+ используется clockRateKHz, в старых версиях - clockRate (в MHz)
-    #if CUDART_VERSION >= 12000
-        props.clockRateKHz = prop.clockRateKHz;
-    #else
-        // clockRate в MHz, конвертируем в kHz
-        props.clockRateKHz = prop.clockRate * 1000;
-    #endif
+  // clockRate уже в kHz (килогерцах) во всех версиях CUDA
+    props.clockRateKHz = prop.clockRate;
     
     props.memoryBusWidth = prop.memoryBusWidth;
     props.l2CacheSize = prop.l2CacheSize;
