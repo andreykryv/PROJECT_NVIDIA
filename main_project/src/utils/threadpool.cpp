@@ -8,152 +8,70 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "threadpool.h"
-#include <QMutexLocker>
-#include <QWaitCondition>
-#include <QtConcurrent>
-#include <QFuture>
-#include <functional>
 
-namespace SortBench {
-
-class ThreadPool::Worker {
-public:
-    explicit Worker(ThreadPool *pool) : m_pool(pool) {}
-    
-    void operator()() {
-        while (true) {
-            std::function<void()> task;
-            
-            {
-                QMutexLocker locker(&m_pool->m_mutex);
-                
-                while (m_pool->m_tasks.isEmpty() && !m_pool->m_stopping) {
-                    m_pool->m_condition.wait(&m_pool->m_mutex);
-                }
-                
-                if (m_pool->m_stopping && m_pool->m_tasks.isEmpty()) {
-                    return;
-                }
-                
-                if (!m_pool->m_tasks.isEmpty()) {
-                    task = m_pool->m_tasks.dequeue();
-                }
-            }
-            
-            if (task) {
-                task();
-            }
-        }
-    }
-    
-private:
-    ThreadPool *m_pool;
-};
-
-ThreadPool::ThreadPool(int threadCount, QObject *parent)
-    : QObject(parent)
-    , m_stopping(false)
-    , m_maxThreads(threadCount <= 0 ? QThread::idealThreadCount() : threadCount)
+ThreadPool::ThreadPool(size_t threadCount)
+    : m_stopping(false)
 {
-    for (int i = 0; i < m_maxThreads; ++i) {
-        QThread *thread = new QThread(this);
-        Worker *worker = new Worker(this);
-        
-        worker->moveToThread(thread);
-        
-        connect(thread, &QThread::started, worker, [worker]() { (*worker)(); });
-        connect(thread, &QThread::finished, worker, &QObject::deleteLater);
-        
-        m_threads.append(thread);
-        thread->start();
+    const size_t count = threadCount > 0 ? threadCount : std::thread::hardware_concurrency();
+
+    for (size_t i = 0; i < count; ++i) {
+        m_workers.emplace_back([this] { workerFunc(); });
     }
 }
 
 ThreadPool::~ThreadPool() {
-    {
-        QMutexLocker locker(&m_mutex);
-        m_stopping = true;
-    }
-    
-    m_condition.notify_all();
-    
-    for (QThread *thread : m_threads) {
-        thread->quit();
-        thread->wait(3000); // Ждём до 3 секунд
-        if (thread->isFinished()) {
-            delete thread;
-        } else {
-            qWarning() << "ThreadPool: Thread did not finish in time";
+    m_stopping.store(true);
+    m_cv.notify_all();
+
+    for (std::thread &worker : m_workers) {
+        if (worker.joinable()) {
+            worker.join();
         }
     }
-    m_threads.clear();
 }
 
-void ThreadPool::submit(std::function<void()> task) {
-    {
-        QMutexLocker locker(&m_mutex);
-        if (m_stopping) {
-            qWarning() << "ThreadPool: Submitting task while stopping";
-            return;
+void ThreadPool::workerFunc() {
+    while (true) {
+        std::function<void()> task;
+
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            m_cv.wait(lock, [this] {
+                return m_stopping.load() || !m_tasks.empty();
+            });
+
+            if (m_stopping.load() && m_tasks.empty()) {
+                return;
+            }
+
+            if (!m_tasks.empty()) {
+                task = std::move(m_tasks.front());
+                m_tasks.pop();
+            }
         }
-        m_tasks.enqueue([task = std::move(task)]() {
+
+        if (task) {
+            m_activeCount.fetch_add(1, std::memory_order_relaxed);
             try {
                 task();
-            } catch (const std::exception &e) {
-                qCritical() << "ThreadPool: Exception in task:" << e.what();
             } catch (...) {
-                qCritical() << "ThreadPool: Unknown exception in task";
+                // Игнорируем исключения в задачах
             }
-        });
+            m_activeCount.fetch_sub(1, std::memory_order_relaxed);
+            m_pendingCount.fetch_sub(1, std::memory_order_relaxed);
+            m_finishedCv.notify_all();
+        }
     }
-    m_condition.notify_one();
 }
 
-QFuture<void> ThreadPool::run(std::function<void()> task) {
-    auto *watcher = new QFutureWatcher<void>();
-    
-    QFuture<void> future = QtConcurrent::run([this, task = std::move(task)]() {
-        try {
-            task();
-        } catch (const std::exception &e) {
-            qCritical() << "ThreadPool: Exception in task:" << e.what();
-        } catch (...) {
-            qCritical() << "ThreadPool: Unknown exception in task";
-        }
+void ThreadPool::waitAll() {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_finishedCv.wait(lock, [this] {
+        return m_tasks.empty() && m_pendingCount.load() == 0;
     });
-    
-    watcher->setFuture(future);
-    
-    connect(watcher, &QFutureWatcher<void>::finished, watcher, &QObject::deleteLater);
-    
-    return future;
 }
 
-int ThreadPool::activeThreadCount() const {
-    QMutexLocker locker(const_cast<QMutex*>(&m_mutex));
-    return m_maxThreads - m_threads.size();
+int ThreadPool::pendingCount() const {
+    return m_pendingCount.load(std::memory_order_relaxed);
 }
-
-int ThreadPool::pendingTaskCount() const {
-    QMutexLocker locker(const_cast<QMutex*>(&m_mutex));
-    return m_tasks.size();
-}
-
-void ThreadPool::waitForAll() {
-    while (true) {
-        {
-            QMutexLocker locker(&m_mutex);
-            if (m_tasks.isEmpty()) {
-                break;
-            }
-        }
-        QThread::msleep(10);
-    }
-}
-
-void ThreadPool::clearQueue() {
-    QMutexLocker locker(&m_mutex);
-    m_tasks.clear();
-}
-
-} // namespace SortBench

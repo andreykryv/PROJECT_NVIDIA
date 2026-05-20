@@ -15,7 +15,7 @@
 #include "arraygenerator.h"
 
 #ifdef USE_CUDA
-#include "cudasorter.h"
+#include "cudasorter.cuh"
 #endif
 
 namespace SortBench {

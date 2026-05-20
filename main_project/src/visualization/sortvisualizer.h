@@ -5,11 +5,11 @@
 #include <QVector>
 #include <QColor>
 #include "../core/sortparams.h"
+#include "../cpu/cpusorter.h"
 
 namespace SortBench {
 
-// Используем HighlightType из sortbenchengine.h через forward declaration
-enum class HighlightType;
+
 
 
 

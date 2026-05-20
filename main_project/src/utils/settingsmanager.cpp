@@ -2,8 +2,6 @@
 #include <QDir>
 #include <QStandardPaths>
 
-namespace SortBench {
-
 SettingsManager::SettingsManager(QObject *parent)
     : QObject(parent)
 {
@@ -37,7 +35,7 @@ void SettingsManager::initDefaults() {
     m_defaults["General/Language"]         = "ru";
     m_defaults["General/LogLevel"]         = 2;
     m_defaults["General/AutoSaveResults"]  = false;
-    m_defaults["General/SaveResultsPath"]  = QDir::homePath() + "/SortBenchResults";
+    m_defaults["General/SaveResultsPath"]  = QString(QDir::homePath() + "/SortBenchResults");
     m_defaults["General/ConfirmOnExit"]    = true;
 
     m_defaults["CUDA/PreferredDeviceIndex"]= 0;
@@ -92,5 +90,3 @@ QString SettingsManager::keyToString(Key key) {
         default:                        return "";
     }
 }
-
-} // namespace SortBench

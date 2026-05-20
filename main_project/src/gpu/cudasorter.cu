@@ -1,4 +1,4 @@
-#include "cudasorter.h"
+#include "cudasorter.cuh"
 #include <cuda_runtime.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>

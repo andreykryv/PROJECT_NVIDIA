@@ -52,8 +52,10 @@ void SortVisualizer::updateFromCallback(const int* data, int size, int idx1, int
     case HighlightType::Pivot:
         if (idx1 >= 0 && idx1 < m_arraySize) m_colors[idx1] = QColor(0, 0, 255);
         break;
-    case HighlightType::Partition:
+     case HighlightType::Write:
         if (idx1 >= 0 && idx1 < m_arraySize) m_colors[idx1] = QColor(200, 0, 200);
+        break;
+          case HighlightType::None:
         break;
     }
 }

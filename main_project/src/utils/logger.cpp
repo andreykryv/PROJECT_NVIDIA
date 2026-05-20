@@ -165,7 +165,7 @@ QStringList Logger::getRecentMessages(int count) const {
 }
 
 void Logger::messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
-    Logger *logger = instance();
+    Logger &logger = instance();
     
     Level level = Level::Info;
     switch (type) {
@@ -177,7 +177,7 @@ void Logger::messageHandler(QtMsgType type, const QMessageLogContext &context, c
     }
     
     QString category = context.category ? QString::fromUtf8(context.category) : QString();
-    logger->log(level, msg, category);
+    logger.log(level, msg, category);
 }
 
 void Logger::installMessageHandler() {

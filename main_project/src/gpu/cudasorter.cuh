@@ -1,5 +1,5 @@
-#ifndef CUDASORTER_H
-#define CUDASORTER_H
+#ifndef CUDASORTER_CUH
+#define CUDASORTER_CUH
 
 #include <QObject>
 #include <QString>
@@ -10,12 +10,12 @@
 namespace SortBench {
 
 struct GpuTimings {
-    double h2dMs = 0.0;      // Host-to-Device transfer time
-    double kernelMs = 0.0;   // Kernel execution time
-    double d2hMs = 0.0;      // Device-to-Host transfer time
-    double syncMs = 0.0;     // Synchronization overhead
-    
-    double totalMs() const {
+    float h2dMs = 0.0f;      // Host-to-Device transfer time
+    float kernelMs = 0.0f;   // Kernel execution time
+    float d2hMs = 0.0f;      // Device-to-Host transfer time
+    float syncMs = 0.0f;     // Synchronization overhead
+
+    float totalMs() const {
         return h2dMs + kernelMs + d2hMs + syncMs;
     }
 };

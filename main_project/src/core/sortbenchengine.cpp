@@ -11,7 +11,7 @@
 #include "cpu/stdsort.h"
 
 #ifdef USE_CUDA
-#include "cudasorter.h"
+#include "cudasorter.cuh"
 #include <cuda_runtime.h>
 #endif
 
