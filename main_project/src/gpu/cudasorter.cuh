@@ -1,11 +1,12 @@
 #ifndef CUDASORTER_CUH
 #define CUDASORTER_CUH
 
-#include <QObject>
-#include <QString>
 #include <vector>
 #include <cuda_runtime.h>
 #include "sortparams.h"
+
+// Этот заголовок используется как в CUDA (.cu), так и в обычном C++ (.cpp) файлах
+// В CUDA-файлах мы не можем использовать QObject, поэтому определяем только CUDA-часть
 
 namespace SortBench {
 
@@ -21,14 +22,23 @@ struct GpuTimings {
 };
 
 // Forward declarations for CUDA kernels (defined in .cu files)
+template<typename T>
+void bitonicSortWrapper(T* d_data, int size, cudaStream_t stream);
 
+template<typename T>
+void thrustRadixSortWrapper(T* d_data, int size, cudaStream_t stream);
 
-class CudaSorter : public QObject {
-    Q_OBJECT
+template<typename T>
+void gpuQuickSortWrapper(T* d_data, int size, int blockSize, cudaStream_t stream);
 
+template<typename T>
+void cubDeviceSortWrapper(T* d_data, int size, cudaStream_t stream);
+
+// Базовый класс без зависимости от Qt для использования в CUDA коде
+class CudaSorterBase {
 public:
-    explicit CudaSorter(int deviceIndex = 0, QObject* parent = nullptr);
-    ~CudaSorter();
+    explicit CudaSorterBase(int deviceIndex = 0);
+    virtual ~CudaSorterBase();
 
     template<typename T>
     GpuTimings sort(const T* hostInput, T* hostOutput, int size,
@@ -39,7 +49,7 @@ public:
     bool isReady() const { return m_ready; }
     size_t currentDeviceMemUsed() const { return m_deviceMemUsed; }
     
-private:
+protected:
     int m_deviceIndex;
     bool m_ready;
     size_t m_deviceMemUsed;
@@ -55,4 +65,4 @@ private:
 
 } // namespace SortBench
 
-#endif // CUDASORTER_H
+#endif // CUDASORTER_CUH

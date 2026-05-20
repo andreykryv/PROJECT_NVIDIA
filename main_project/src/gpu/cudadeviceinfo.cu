@@ -1,12 +1,16 @@
 #include "cudadeviceinfo.h"
+// cuda_runtime.h не включаем напрямую здесь, он уже включен в cudadeviceinfo.h через cudadeviceinfo.cuh
+// для .cu файлов нужен отдельный подход - включаем только если это CUDA-компиляция
+#ifdef __CUDACC__
 #include <cuda_runtime.h>
-#include <QDebug>
+#endif
+#include <iostream>
 
 #define CUDA_CHECK_RETURN(call) \
     do { \
         cudaError_t err = call; \
         if (err != cudaSuccess) { \
-            qWarning() << "CUDA error:" << cudaGetErrorString(err); \
+            std::cerr << "CUDA error:" << cudaGetErrorString(err) << std::endl; \
             return {}; \
         } \
     } while(0)
@@ -16,7 +20,7 @@
     do { \
         cudaError_t err = call; \
         if (err != cudaSuccess) { \
-            qWarning() << "CUDA error:" << cudaGetErrorString(err); \
+            std::cerr << "CUDA error:" << cudaGetErrorString(err) << std::endl; \
             return false; \
         } \
     } while(0)
@@ -40,7 +44,7 @@ CudaDeviceProperties CudaDeviceInfo::getProperties(int deviceIndex) {
     cudaDeviceProp prop;
     cudaError_t err = cudaGetDeviceProperties(&prop, deviceIndex);
     if (err != cudaSuccess) {
-        qWarning() << "CUDA error:" << cudaGetErrorString(err);
+        std::cerr << "CUDA error:" << cudaGetErrorString(err) << std::endl;
         return props;
     }
 

@@ -22,7 +22,7 @@ namespace SortBench {
 
 // Forward declarations
 #ifndef USE_CUDA
-class CudaSorter;
+class CudaSorterBase;
 #endif
 
 // GpuTimings forward declaration for non-CUDA builds
@@ -115,7 +115,7 @@ private:
     std::atomic<bool> m_pauseRequested{false};
 
     CpuSorter* m_cpuSorter = nullptr;
-    CudaSorter* m_gpuSorter = nullptr;
+    CudaSorterBase* m_gpuSorter = nullptr;
 
     QElapsedTimer m_stageTimer;
     BenchmarkResult m_partialResult;

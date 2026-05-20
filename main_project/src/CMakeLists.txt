@@ -115,6 +115,7 @@ if(ENABLE_CUDA)
     list(APPEND SORTBENCH_SOURCES
         # GPU сортировки
         gpu/cudasorter.cu
+        gpu/cudasorter.cpp
         gpu/cudamemorymanager.cpp
 
         # CUDA файлы
@@ -175,6 +176,7 @@ set(SORTBENCH_HEADERS
 # GPU заголовки добавляются только если включена поддержка CUDA
 if(ENABLE_CUDA)
     list(APPEND SORTBENCH_HEADERS
+        gpu/cudasorter.h
         gpu/cudasorter.cuh
         gpu/cudamemorymanager.h
         gpu/bitonicsort.cuh
@@ -194,6 +196,7 @@ if(ENABLE_CUDA)
         gpu/cudaquicksort.cu
         gpu/cudautils.cu
         gpu/thrustradixsort.cu
+        gpu/cudasorter.cu
         PROPERTIES LANGUAGE CUDA
     )
 endif()
