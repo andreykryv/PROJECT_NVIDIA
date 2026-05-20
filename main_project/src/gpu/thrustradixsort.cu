@@ -13,7 +13,7 @@ void thrustRadixSortWrapper(T* d_data, int size, cudaStream_t stream) {
 }
 
 // Явные инстанции
-template void thrustRadixSortWrapper<int32_t>(int32_t*, int, cudaStream_t);
-template void thrustRadixSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
+template void thrustRadixSortWrapper<int>(int*, int, cudaStream_t);
+template void thrustRadixSortWrapper<long>(long*, int, cudaStream_t);
 template void thrustRadixSortWrapper<float>(float*, int, cudaStream_t);
 template void thrustRadixSortWrapper<double>(double*, int, cudaStream_t);

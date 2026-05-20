@@ -139,7 +139,7 @@ void bitonicSortWrapper(T* d_data, int size, cudaStream_t stream) {
 }
 
 // Явные инстанции
-template void bitonicSortWrapper<int32_t>(int32_t*, int, cudaStream_t);
-template void bitonicSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
+template void bitonicSortWrapper<int>(int*, int, cudaStream_t);
+template void bitonicSortWrapper<long>(long*, int, cudaStream_t);
 template void bitonicSortWrapper<float>(float*, int, cudaStream_t);
 template void bitonicSortWrapper<double>(double*, int, cudaStream_t);

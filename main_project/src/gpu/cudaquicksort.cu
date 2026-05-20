@@ -33,7 +33,7 @@ void cubDeviceSortWrapper(T* d_data, int size, cudaStream_t stream) {
 }
 
 // Явные инстанции
-template void cubDeviceSortWrapper<int32_t>(int32_t*, int, cudaStream_t);
-template void cubDeviceSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
+template void cubDeviceSortWrapper<int>(int*, int, cudaStream_t);
+template void cubDeviceSortWrapper<long>(long*, int, cudaStream_t);
 template void cubDeviceSortWrapper<float>(float*, int, cudaStream_t);
 template void cubDeviceSortWrapper<double>(double*, int, cudaStream_t);

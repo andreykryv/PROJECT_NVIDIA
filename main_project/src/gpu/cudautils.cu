@@ -12,7 +12,7 @@ void gpuQuickSortWrapper(T* d_data, int size, int blockSize, cudaStream_t stream
 }
 
 // Явные инстанции
-template void gpuQuickSortWrapper<int32_t>(int32_t*, int, int, cudaStream_t);
-template void gpuQuickSortWrapper<int64_t>(int64_t*, int, int, cudaStream_t);
+template void gpuQuickSortWrapper<int>(int*, int, int, cudaStream_t);
+template void gpuQuickSortWrapper<long>(long*, int, int, cudaStream_t);
 template void gpuQuickSortWrapper<float>(float*, int, int, cudaStream_t);
 template void gpuQuickSortWrapper<double>(double*, int, int, cudaStream_t);
