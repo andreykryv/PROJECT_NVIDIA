@@ -18,6 +18,11 @@
 #include <cmath>
 #include <random>
 
+// Определение макроса USE_CUDA по умолчанию, если не определён в CMake
+#ifndef USE_CUDA
+#define USE_CUDA 0
+#endif
+
 namespace SortBench {
 
 // вспомогательные функции преобразования строки → enum
@@ -241,6 +246,7 @@ void ControlPanel::populateAlgorithms() {
 }
 
 void ControlPanel::checkCudaAvailability() {
+#if USE_CUDA
     // FIX: было CudaDeviceInfo::hasCudaDevice() → isCudaAvailable()
     if (!CudaDeviceInfo::isCudaAvailable()) {
         m_gpuAlgorithmCombo->setEnabled(false);
@@ -249,6 +255,14 @@ void ControlPanel::checkCudaAvailability() {
         m_gpuAlgorithmCombo->setToolTip("CUDA недоступна на этом устройстве");
         m_gpuAlgorithmCombo->setCurrentIndex(m_gpuAlgorithmCombo->count() - 1);
     }
+#else
+    // CUDA не включена при компиляции
+    m_gpuAlgorithmCombo->setEnabled(false);
+    m_enableGpuCheck->setEnabled(false);
+    m_enableGpuCheck->setChecked(false);
+    m_gpuAlgorithmCombo->setToolTip("Поддержка CUDA не включена");
+    m_gpuAlgorithmCombo->setCurrentIndex(m_gpuAlgorithmCombo->count() - 1);
+#endif
 }
 
 void ControlPanel::connectSignals() {
