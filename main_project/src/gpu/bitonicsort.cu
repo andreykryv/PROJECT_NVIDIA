@@ -64,7 +64,8 @@ __global__ void bitonicSortStepKernel(T* data, int size, int k, int j, bool dir)
 // Битоническая сортировка в shared memory для малых размеров
 template<typename T>
 __global__ void bitonicSortSharedKernel(T* data, int size) {
-    extern __shared__ T sdata[];
+     extern __shared__ unsigned char sdata_raw[];
+    T* sdata = reinterpret_cast<T*>(sdata_raw);
 
     int tid = threadIdx.x;
     int offset = blockIdx.x * blockDim.x * 2;
