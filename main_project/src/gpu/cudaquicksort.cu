@@ -32,8 +32,16 @@ void cubDeviceSortWrapper(T* d_data, int size, cudaStream_t stream) {
     cudaFree(d_temp_storage);
 }
 
-// Явные инстанции
+// Явные инстанции для уникальных типов
+// Примечание: int и int32_t могут быть одним типом, то же для long и int64_t
+#if defined(__linux__) && defined(__x86_64__)
+// На Linux x86_64: int = int32_t, long = int64_t
 template void cubDeviceSortWrapper<int>(int*, int, cudaStream_t);
 template void cubDeviceSortWrapper<long>(long*, int, cudaStream_t);
+#else
+// На других платформах могут отличаться
+template void cubDeviceSortWrapper<int32_t>(int32_t*, int, cudaStream_t);
+template void cubDeviceSortWrapper<int64_t>(int64_t*, int, cudaStream_t);
+#endif
 template void cubDeviceSortWrapper<float>(float*, int, cudaStream_t);
 template void cubDeviceSortWrapper<double>(double*, int, cudaStream_t);
