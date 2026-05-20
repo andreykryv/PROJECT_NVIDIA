@@ -20,7 +20,13 @@
 #define CUADEVICEINFO_CUH
 
 #include <cuda_runtime.h>
-#include <QString>
+
+// QString используется только в host-коде, не в CUDA device коде
+#ifdef __CUDACC__
+    // В CUDA device коде не используем Qt
+#else
+    #include <QString>
+#endif
 
 // Макросы для обработки ошибок CUDA
 #define CUDA_CHECK(call) \

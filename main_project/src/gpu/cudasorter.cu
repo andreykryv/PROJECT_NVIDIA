@@ -1,10 +1,13 @@
 #include "cudasorter.cuh"
+// cuda_runtime.h и другие CUDA-заголовки включаем только при CUDA-компиляции
+#ifdef __CUDACC__
 #include <cuda_runtime.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
 #include <cub/cub.cuh>
+#endif
 #include <stdexcept>
-#include <QDebug>
+#include <iostream>
 
 #define CUDA_CHECK(call) \
     do { \
@@ -16,32 +19,19 @@
 
 namespace SortBench {
 
-// Forward declarations для wrapper функций
-template<typename T>
-void bitonicSortWrapper(T* d_data, int size, cudaStream_t stream);
-
-template<typename T>
-void thrustRadixSortWrapper(T* d_data, int size, cudaStream_t stream);
-
-template<typename T>
-void gpuQuickSortWrapper(T* d_data, int size, int blockSize, cudaStream_t stream);
-
-template<typename T>
-void cubDeviceSortWrapper(T* d_data, int size, cudaStream_t stream);
-
-CudaSorter::CudaSorter(int deviceIndex, QObject* parent)
-    : QObject(parent), m_deviceIndex(deviceIndex), m_ready(false), m_deviceMemUsed(0),
-      m_d_input(nullptr), m_d_output(nullptr)
+CudaSorterBase::CudaSorterBase(int deviceIndex)
+    : m_deviceIndex(deviceIndex), m_ready(false), m_deviceMemUsed(0),
+      m_d_input(nullptr), m_d_output(nullptr), m_startEvent(nullptr), m_endEvent(nullptr)
 {
     try {
         m_ready = initCuda(deviceIndex);
     } catch (const std::exception& e) {
-        qWarning() << "CUDA initialization failed:" << e.what();
+        std::cerr << "CUDA initialization failed:" << e.what() << std::endl;
         m_ready = false;
     }
 }
 
-CudaSorter::~CudaSorter() {
+CudaSorterBase::~CudaSorterBase() {
     freeDeviceBuffers();
     
     for (auto& stream : m_streams) {
@@ -52,7 +42,7 @@ CudaSorter::~CudaSorter() {
     if (m_endEvent) cudaEventDestroy(m_endEvent);
 }
 
-bool CudaSorter::initCuda(int deviceIndex) {
+bool CudaSorterBase::initCuda(int deviceIndex) {
     int deviceCount = 0;
     CUDA_CHECK(cudaGetDeviceCount(&deviceCount));
     if (deviceCount == 0) return false;
@@ -73,7 +63,7 @@ bool CudaSorter::initCuda(int deviceIndex) {
     return true;
 }
 
-size_t CudaSorter::allocateDeviceBuffers(size_t bytes) {
+size_t CudaSorterBase::allocateDeviceBuffers(size_t bytes) {
     if (!m_ready) return 0;
     
     freeDeviceBuffers();
@@ -85,7 +75,7 @@ size_t CudaSorter::allocateDeviceBuffers(size_t bytes) {
     return m_deviceMemUsed;
 }
 
-void CudaSorter::freeDeviceBuffers() {
+void CudaSorterBase::freeDeviceBuffers() {
     if (m_d_input) {
         cudaFree(m_d_input);
         m_d_input = nullptr;
@@ -98,7 +88,7 @@ void CudaSorter::freeDeviceBuffers() {
 }
 
 template<typename T>
-GpuTimings CudaSorter::sort(const T* hostInput, T* hostOutput, int size,
+GpuTimings CudaSorterBase::sort(const T* hostInput, T* hostOutput, int size,
                             int gpuAlgo, int blockSize, int numStreams) {
     GpuTimings timings{};
     
@@ -160,9 +150,9 @@ GpuTimings CudaSorter::sort(const T* hostInput, T* hostOutput, int size,
 }
 
 // Явные инстанции шаблона sort
-template GpuTimings CudaSorter::sort<int32_t>(const int32_t*, int32_t*, int, int, int, int);
-template GpuTimings CudaSorter::sort<int64_t>(const int64_t*, int64_t*, int, int, int, int);
-template GpuTimings CudaSorter::sort<float>(const float*, float*, int, int, int, int);
-template GpuTimings CudaSorter::sort<double>(const double*, double*, int, int, int, int);
+template GpuTimings CudaSorterBase::sort<int32_t>(const int32_t*, int32_t*, int, int, int, int);
+template GpuTimings CudaSorterBase::sort<int64_t>(const int64_t*, int64_t*, int, int, int, int);
+template GpuTimings CudaSorterBase::sort<float>(const float*, float*, int, int, int, int);
+template GpuTimings CudaSorterBase::sort<double>(const double*, double*, int, int, int, int);
 
 } // namespace SortBench

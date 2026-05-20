@@ -23,7 +23,7 @@ SortBenchEngine::SortBenchEngine(QObject *parent)
     // Инициализация GPU сортировщика только если CUDA доступна
     #ifdef USE_CUDA
     try {
-        m_gpuSorter = new CudaSorter(0);
+        m_gpuSorter = new CudaSorterBase(0);
     } catch (...) {
         emit logMessage("CUDA не доступна, GPU сортировка отключена", 1);
     }
