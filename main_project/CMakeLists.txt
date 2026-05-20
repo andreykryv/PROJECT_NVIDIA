@@ -114,7 +114,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         $<$<COMPILE_LANGUAGE:CUDA>:-g;-G>
     )
 endif()
-
+# Разрешаем constexpr __host__ функции в __global__ функциях CUDA
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
+)
 # Конфигурация CPack для создания инсталляторов
 set(CPACK_PACKAGE_NAME "SortBench")
 set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
