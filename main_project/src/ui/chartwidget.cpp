@@ -46,25 +46,15 @@ void ChartWidget::setupTabs() {
 }
 
 void ChartWidget::createBarChart() {
-    barChart = new SortBench::ComparisonBarChart();
+    barChart = new SortBench::ComparisonBarChart(this);
     barChart->setTitle("Время выполнения (мс)");
-    
-    auto *chartView = new QChartView(barChart->chart());
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setRubberBand(QChartView::RectangleRubberBand);
-    
-    tabs->addTab(chartView, "Время выполнения");
+    tabs->addTab(barChart, "Время выполнения");  // use barChart directly
 }
 
 void ChartWidget::createScatterChart() {
-    scatterChart = new SortBench::ScatterPlotChart();
+    scatterChart = new SortBench::ScatterPlotChart(this);
     scatterChart->setTitle("Масштабируемость");
-    
-    auto *chartView = new QChartView(scatterChart->chart());
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setRubberBand(QChartView::RectangleRubberBand);
-    
-    tabs->addTab(chartView, "Масштабируемость");
+    tabs->addTab(scatterChart, "Масштабируемость");  // use scatterChart directly
 }
 
 void ChartWidget::createSpeedupChart() {

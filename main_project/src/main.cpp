@@ -4,6 +4,7 @@
 #include <QStyleFactory>
 #include <QFile>
 #include <QDir>
+#include <QTimer>
 
 #include "mainwindow.h"
 #include "utils/logger.h"
@@ -69,21 +70,9 @@ int main(int argc, char *argv[])
             cudaAvailable = false;
             LOG_ERROR(QString("Ошибка инициализации CUDA: %1").arg(e.what()));
         }
-        }
-
-    // Создаём главное окно ДО любых модальных диалогов, чтобы оно могло появиться
-    SortBench::MainWindow mainWindow;
-    mainWindow.show();
-    mainWindow.raise();
-    mainWindow.activateWindow();
-
-    // Показываем предупреждение после создания окна (с правильным родителем)
-    if (!cudaAvailable) {
-        QMessageBox::warning(&mainWindow, "CUDA недоступна",
-            "CUDA не обнаружена на этом устройстве.\n"
-            "Приложение будет работать в CPU-only режиме.");
     }
-    
+
+    // Применяем стиль ДО создания UI
     bool useDarkTheme = parser.isSet(darkOption) || 
                        (!parser.isSet(lightOption) && 
                         SettingsManager::instance().theme() == "dark");
@@ -97,8 +86,21 @@ int main(int argc, char *argv[])
     }
     
     app.setStyle(QStyleFactory::create("Fusion"));
-    
-   
+
+    // Создаём главное окно
+    SortBench::MainWindow mainWindow;
+    mainWindow.show();
+    mainWindow.raise();
+    mainWindow.activateWindow();
+
+    // Откладываем предупреждение до запуска event loop
+    if (!cudaAvailable) {
+        QTimer::singleShot(0, &mainWindow, []() {
+            QMessageBox::warning(nullptr, "CUDA недоступна",
+                "CUDA не обнаружена на этом устройстве.\n"
+                "Приложение будет работать в CPU-only режиме.");
+        });
+    }
     
     return app.exec();
 }

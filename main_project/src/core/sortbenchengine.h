@@ -82,6 +82,7 @@ public slots:
     void stopBenchmark();
     void pauseBenchmark();
     void resumeBenchmark();
+    void startPolling();
 
 signals:
     void progressUpdated(int percent, const QString& phase);
