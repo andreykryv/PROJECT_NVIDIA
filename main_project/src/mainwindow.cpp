@@ -47,9 +47,16 @@ MainWindow::MainWindow(QWidget *parent)
     engine->moveToThread(workerThread);
     workerThread->start();
 
-    controlPanel = new SortBench::ControlPanel(this);
-    vizWidget = new SortBench::VisualizationWidget(this);
-    chartWidget = new SortBench::ChartWidget(this);
+    // Получаем виджеты из UI файла
+    controlPanel = qobject_cast<SortBench::ControlPanel*>(ui->controlPanel);
+    vizWidget = qobject_cast<SortBench::VisualizationWidget*>(ui->visualizationWidget);
+    chartWidget = qobject_cast<SortBench::ChartWidget*>(ui->chartWidget);
+
+    // Получаем tabWidget и splitter из UI
+    tabWidget = ui->mainTabWidget;
+    mainSplitter = ui->mainSplitter;
+
+    // Создаем прогресс панель и статистику
     progressPanel = new SortBench::ProgressPanel(this);
     statsPanel = new SortBench::StatsPanel(this);
 
@@ -59,35 +66,19 @@ MainWindow::MainWindow(QWidget *parent)
     setupDockWidgets();
     setupShortcuts();
 
-    auto *centralWidget = new QWidget(this);
-    auto *mainLayout = new QVBoxLayout(centralWidget);
+    // Настраиваем макет для прогресс панели
+    auto *progressContainer = findChild<QWidget*>("progressContainer");
+    if (progressContainer) {
+        auto *layout = progressContainer->layout();
+        if (layout) {
+            layout->addWidget(progressPanel);
+        }
+    }
 
-    mainSplitter = new QSplitter(Qt::Horizontal, this);
-
-    auto *leftPanel = new QWidget(this);
-    auto *leftLayout = new QVBoxLayout(leftPanel);
-    leftLayout->setContentsMargins(0, 0, 0, 0);
-    leftLayout->addWidget(controlPanel);
-
-    auto *rightPanel = new QWidget(this);
-    auto *rightLayout = new QVBoxLayout(rightPanel);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
-
-    tabWidget = new QTabWidget(this);
-    tabWidget->addTab(vizWidget, "Визуализация");
-    tabWidget->addTab(chartWidget, "Графики");
-    tabWidget->addTab(statsPanel, "Таблица результатов");
-
-    rightLayout->addWidget(tabWidget);
-    rightLayout->addWidget(progressPanel);
-
-    mainSplitter->addWidget(leftPanel);
-    mainSplitter->addWidget(rightPanel);
-    mainSplitter->setStretchFactor(0, 1);
-    mainSplitter->setStretchFactor(1, 3);
-
-    mainLayout->addWidget(mainSplitter);
-    setCentralWidget(centralWidget);
+    // Добавляем statsPanel как третью вкладку
+    if (tabWidget) {
+        tabWidget->addTab(statsPanel, "Таблица результатов");
+    }
 
     restoreLayout();
     applyTheme(SettingsManager::instance().theme());

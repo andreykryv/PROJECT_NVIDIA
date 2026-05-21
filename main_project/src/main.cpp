@@ -69,12 +69,19 @@ int main(int argc, char *argv[])
             cudaAvailable = false;
             LOG_ERROR(QString("Ошибка инициализации CUDA: %1").arg(e.what()));
         }
-        
-        if (!cudaAvailable) {
-            QMessageBox::warning(nullptr, "CUDA недоступна",
-                "CUDA не обнаружена на этом устройстве.\n"
-                "Приложение будет работать в CPU-only режиме.");
         }
+
+    // Создаём главное окно ДО любых модальных диалогов, чтобы оно могло появиться
+    SortBench::MainWindow mainWindow;
+    mainWindow.show();
+    mainWindow.raise();
+    mainWindow.activateWindow();
+
+    // Показываем предупреждение после создания окна (с правильным родителем)
+    if (!cudaAvailable) {
+        QMessageBox::warning(&mainWindow, "CUDA недоступна",
+            "CUDA не обнаружена на этом устройстве.\n"
+            "Приложение будет работать в CPU-only режиме.");
     }
     
     bool useDarkTheme = parser.isSet(darkOption) || 
@@ -91,8 +98,7 @@ int main(int argc, char *argv[])
     
     app.setStyle(QStyleFactory::create("Fusion"));
     
-   SortBench::MainWindow mainWindow;
-    mainWindow.show();
+   
     
     return app.exec();
 }
