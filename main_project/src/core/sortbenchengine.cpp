@@ -31,7 +31,7 @@ SortBenchEngine::SortBenchEngine(QObject *parent)
     
     m_gpuMemPollTimer = new QTimer(this);
     connect(m_gpuMemPollTimer, &QTimer::timeout, this, &SortBenchEngine::pollGpuMemory);
-    m_gpuMemPollTimer->start(500);
+    // Do NOT start timer here - will be started from worker thread via startPolling()
 }
 
 SortBenchEngine::~SortBenchEngine() {
@@ -39,6 +39,11 @@ SortBenchEngine::~SortBenchEngine() {
 #ifdef USE_CUDA
     delete m_gpuSorter;
 #endif
+}
+
+void SortBenchEngine::startPolling()
+{
+    m_gpuMemPollTimer->start(500);
 }
 
 void SortBenchEngine::startBenchmark(const SortParams& params) {

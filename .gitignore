@@ -1,47 +1,52 @@
 ```
-# Compiled and build artifacts
+# Build artifacts
 *.o
 *.obj
-*.a
-*.lib
-*.so
-*.dll
 *.exe
+*.dll
+*.so
+*.a
 *.out
-*.pyc
-__pycache__/
-*.class
+build/
+dist/
+target/
 
 # Dependencies
 node_modules/
 venv/
 .venv/
-.env
-.env.local
-*.env.*
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.gradle/
+.cargo/
+.pip/
 
-# Build directories
-build/
-dist/
-target/
-cmake-build-*/
-
-# Editors
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *.tmp
 
+# System files
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.env.*
+
 # Logs
 *.log
 
 # Coverage
-.coverage
 coverage/
 htmlcov/
+.coverage
 
-# OS
-.DS_Store
-Thumbs.db
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
 ```

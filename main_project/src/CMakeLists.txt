@@ -245,23 +245,10 @@ if(ENABLE_CUDA)
     )
 endif()
 
-# Добавление ресурсов Qt
-if(TARGET Qt6::Core)
-    qt_add_resources(SortBench "resources"
-        PREFIX "/"
-        FILES
-            ../resources/resources.qrc
-            ../resources/styles/darktheme.qss
-            ../resources/styles/lighttheme.qss
-    )
-else()
-    qt5_add_resources(SortBench_SRC
-        ../resources/resources.qrc
-        ../resources/styles/darktheme.qss
-        ../resources/styles/lighttheme.qss
-    )
-    target_sources(SortBench PRIVATE ${SortBench_SRC})
-endif()
+# Добавление ресурсов Qt через AUTORCC (resources.qrc в sources)
+target_sources(SortBench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../resources/resources.qrc
+)
 
 # Пути поиска заголовков
 target_include_directories(SortBench PRIVATE

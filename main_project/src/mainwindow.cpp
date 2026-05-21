@@ -45,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
     auto *workerThread = new QThread(this);
     engine = new SortBenchEngine();
     engine->moveToThread(workerThread);
+    // Start timer after moving to thread
+    connect(workerThread, &QThread::started, engine, &SortBenchEngine::startPolling);
     workerThread->start();
 
     // Получаем виджеты из UI файла
@@ -60,10 +62,11 @@ MainWindow::MainWindow(QWidget *parent)
     progressPanel = new SortBench::ProgressPanel(this);
     statsPanel = new SortBench::StatsPanel(this);
 
+    // setupDockWidgets MUST come BEFORE setupMenuBar (logDock is used in menu)
+    setupDockWidgets();
     setupMenuBar();
     setupToolBar();
     setupStatusBar();
-    setupDockWidgets();
     setupShortcuts();
 
     // Настраиваем макет для прогресс панели
