@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     
     app.setStyle(QStyleFactory::create("Fusion"));
     
-    MainWindow mainWindow;
+   SortBench::MainWindow mainWindow;
     mainWindow.show();
     
     return app.exec();
