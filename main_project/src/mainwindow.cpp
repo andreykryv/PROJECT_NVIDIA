@@ -40,27 +40,26 @@ MainWindow::MainWindow(QWidget *parent)
     qRegisterMetaType<SortParams>("SortBench::SortParams");
     qRegisterMetaType<BenchmarkResult>("SortBench::BenchmarkResult");
 
-    Logger::instance().initialize(Logger::Level::Info, "");
+    // FIX 1: Do NOT call Logger::initialize() here — main.cpp already did it.
+    // Calling it again leaks QFile handles and overwrites settings.
+    // Logger::instance().initialize(Logger::Level::Info, "");  // REMOVED
 
     auto *workerThread = new QThread(this);
     engine = new SortBenchEngine();
     engine->moveToThread(workerThread);
-    // Start timer after moving to thread
     connect(workerThread, &QThread::started, engine, &SortBenchEngine::startPolling);
     workerThread->start();
 
-    // Получаем виджеты из UI файла
+    // Get widgets from the .ui file
     controlPanel = qobject_cast<SortBench::ControlPanel*>(ui->controlPanel);
-    vizWidget = qobject_cast<SortBench::VisualizationWidget*>(ui->visualizationWidget);
-    chartWidget = qobject_cast<SortBench::ChartWidget*>(ui->chartWidget);
+    vizWidget    = qobject_cast<SortBench::VisualizationWidget*>(ui->visualizationWidget);
+    chartWidget  = qobject_cast<SortBench::ChartWidget*>(ui->chartWidget);
 
-    // Получаем tabWidget и splitter из UI
-    tabWidget = ui->mainTabWidget;
+    tabWidget    = ui->mainTabWidget;
     mainSplitter = ui->mainSplitter;
 
-    // Создаем прогресс панель и статистику
     progressPanel = new SortBench::ProgressPanel(this);
-    statsPanel = new SortBench::StatsPanel(this);
+    statsPanel    = new SortBench::StatsPanel(this);
 
     // setupDockWidgets MUST come BEFORE setupMenuBar (logDock is used in menu)
     setupDockWidgets();
@@ -69,7 +68,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupStatusBar();
     setupShortcuts();
 
-    // Настраиваем макет для прогресс панели
+    // Add progressPanel into the container from the .ui
     auto *progressContainer = findChild<QWidget*>("progressContainer");
     if (progressContainer) {
         auto *layout = progressContainer->layout();
@@ -78,9 +77,9 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
 
-    // Добавляем statsPanel как третью вкладку
+    // Add statsPanel as an extra tab
     if (tabWidget) {
-        tabWidget->addTab(statsPanel, "Таблица результатов");
+        tabWidget->addTab(statsPanel, tr("Статистика"));
     }
 
     restoreLayout();
@@ -112,6 +111,7 @@ void MainWindow::setupMenuBar()
     auto *exportCSVAction = fileMenu->addAction(tr("Экспорт CSV"), this, &MainWindow::onExportCSV);
     exportCSVAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_S));
     auto *exportChartAction = fileMenu->addAction(tr("Экспорт графика..."), this, &MainWindow::onExportChart);
+    Q_UNUSED(exportChartAction);
     fileMenu->addSeparator();
     auto *exitAction = fileMenu->addAction(tr("Выход"), this, &QWidget::close);
     exitAction->setShortcut(QKeySequence::Quit);
@@ -173,6 +173,7 @@ void MainWindow::setupDockWidgets()
     logView->setFont(QFont("Consolas", 9));
     logDock->setWidget(logView);
     addDockWidget(Qt::BottomDockWidgetArea, logDock);
+    logDock->hide();   // hidden by default, user can show via menu
 }
 
 void MainWindow::setupShortcuts() {}
@@ -181,8 +182,15 @@ void MainWindow::connectSignals()
 {
     connect(controlPanel, &SortBench::ControlPanel::parametersChanged,
             this, &MainWindow::onAlgorithmChanged);
+
+    // FIX 2: progressUpdated(int, QString) cannot connect directly to setProgress(int)
+    // with typed (new-style) connect — signatures differ.  Use a lambda adapter.
     connect(engine, &SortBenchEngine::progressUpdated,
-            progressPanel, &SortBench::ProgressPanel::setProgress);
+            this, [this](int percent, const QString &phase) {
+                progressPanel->setProgress(percent);
+                progressPanel->setPhase(phase);
+            });
+
     connect(engine, &SortBenchEngine::frameReady,
             vizWidget, &SortBench::VisualizationWidget::renderFrame);
     connect(engine, &SortBenchEngine::benchmarkFinished,
@@ -206,7 +214,7 @@ void MainWindow::connectSignals()
 
     connect(tabWidget, &QTabWidget::currentChanged, [this](int index) {
         if (index != 0) vizWidget->pause();
-        else vizWidget->resume();
+        else            vizWidget->resume();
     });
 }
 
@@ -214,7 +222,6 @@ void MainWindow::onRunBenchmark()
 {
     SortParams params = controlPanel->getCurrentParams();
 
-    // Простая проверка вместо params.isValid()
     if (params.arraySize <= 0 || (!params.enableCPU && !params.enableGPU)) {
         QMessageBox::warning(this, tr("Ошибка"),
             tr("Некорректные параметры бенчмарка"));
@@ -222,6 +229,7 @@ void MainWindow::onRunBenchmark()
     }
 
     controlPanel->setRunning(true);
+    progressPanel->setBenchmarkStarted();
     QMetaObject::invokeMethod(engine, "startBenchmark",
         Qt::QueuedConnection,
         Q_ARG(SortBench::SortParams, params));
@@ -237,17 +245,24 @@ void MainWindow::onStopBenchmark()
 
 void MainWindow::onPauseResume()
 {
-    QMetaObject::invokeMethod(engine, "togglePause", Qt::QueuedConnection);
-    bool paused = !controlPanel->isPaused();
-    controlPanel->setPaused(paused);
-    if (paused) vizWidget->pause();
-    else vizWidget->resume();
+    // FIX 3: "togglePause" does not exist on SortBenchEngine.
+    // Use the correct slot names: pauseBenchmark / resumeBenchmark.
+    bool currentlyPaused = controlPanel->isPaused();
+    if (!currentlyPaused) {
+        QMetaObject::invokeMethod(engine, "pauseBenchmark", Qt::QueuedConnection);
+        vizWidget->pause();
+    } else {
+        QMetaObject::invokeMethod(engine, "resumeBenchmark", Qt::QueuedConnection);
+        vizWidget->resume();
+    }
+    controlPanel->setPaused(!currentlyPaused);
 }
 
 void MainWindow::onResetAll()
 {
     chartWidget->clearResults();
     vizWidget->reset();
+    progressPanel->reset();
     m_results.clear();
     controlPanel->setRunning(false);
     controlPanel->setPaused(false);
@@ -256,13 +271,12 @@ void MainWindow::onResetAll()
 
 void MainWindow::onAlgorithmChanged()
 {
-    // Обработка смены алгоритма
+    // Reserved for future handling of parameter changes in the UI.
 }
 
 void MainWindow::onArraySizeChanged(int size)
 {
     Q_UNUSED(size);
-    // Обработка изменения размера массива
 }
 
 void MainWindow::onAnimationSpeedChanged(int speed)
@@ -275,7 +289,8 @@ void MainWindow::onBenchmarkFinished(const SortBench::BenchmarkResult &result)
     controlPanel->setRunning(false);
     m_results.append(result);
     chartWidget->addResult(result);
-    statsPanel->updateResult(result);   // было addResult → исправлено на updateResult
+    statsPanel->updateResult(result);
+    progressPanel->setBenchmarkFinished(result.cpuTimeMs, result.gpuTotalTimeMs);
 
     QString message;
     if (result.gpuTotalTimeMs > 0.0) {
@@ -366,38 +381,47 @@ void MainWindow::onFpsTimerTick()
 void MainWindow::onLogMessage(const QString &message, int level)
 {
     QString timestamp = QDateTime::currentDateTime().toString("HH:mm:ss.zzz");
+    QString color;
     QString prefix;
     switch (static_cast<Logger::Level>(level)) {
-        case Logger::Level::Error:   prefix = "[ERR] "; break;
-        case Logger::Level::Warning: prefix = "[WARN] "; break;
-        case Logger::Level::Info:    prefix = "[INFO] "; break;
-        case Logger::Level::Debug:   prefix = "[DBG] "; break;
-        default: prefix = "";
+        case Logger::Level::Error:   color = "red";    prefix = "[ERR] ";  break;
+        case Logger::Level::Warning: color = "orange"; prefix = "[WARN] "; break;
+        case Logger::Level::Debug:   color = "gray";   prefix = "[DBG] ";  break;
+        default:                     color = "black";  prefix = "[INFO] "; break;
     }
-    logView->append(QString("<font color='%1'>%2%3</font>")
-        .arg(level == static_cast<int>(Logger::Level::Error) ? "red" :
-             level == static_cast<int>(Logger::Level::Warning) ? "orange" : "black")
-        .arg(prefix).arg(message));
+    logView->append(QString("<font color='%1'>%2 %3%4</font>")
+        .arg(color, timestamp, prefix, message.toHtmlEscaped()));
     auto *scrollBar = logView->verticalScrollBar();
     scrollBar->setValue(scrollBar->maximum());
 }
 
 void MainWindow::onGPUMemoryUpdated(size_t used, size_t total)
 {
-    double usedMB = used / (1024.0 * 1024.0);
-    double totalMB = total / (1024.0 * 1024.0);
-    statsPanel->updateGPUMemory(usedMB, totalMB);
-    QString text = tr("GPU: %1/%2 MB").arg(usedMB, 0, 'f', 1).arg(totalMB, 0, 'f', 1);
-    gpuInfoLabel->setText(text);
+    // FIX 4: pass raw bytes to updateGPUMemory — it handles the MB conversion itself.
+    // Previous code was dividing to MB and then passing those MB values as "bytes",
+    // causing a double conversion and garbage display values.
+    statsPanel->updateGPUMemory(used, total);
+
+    double usedMB  = static_cast<double>(used)  / (1024.0 * 1024.0);
+    double totalMB = static_cast<double>(total) / (1024.0 * 1024.0);
+    gpuInfoLabel->setText(tr("GPU: %1/%2 MB").arg(usedMB, 0, 'f', 1).arg(totalMB, 0, 'f', 1));
 }
 
 void MainWindow::applyTheme(const QString &themeName)
 {
-    QFile qssFile(themeName == "dark" ? ":/styles/darktheme.qss" : ":/styles/lighttheme.qss");
+    // FIX 5: The .qrc has prefix="/styles" and file="styles/darktheme.qss",
+    // so the full resource path is ":/styles/styles/darktheme.qss", not
+    // ":/styles/darktheme.qss" as was written before.
+    QString path = (themeName == "dark")
+        ? ":/styles/styles/darktheme.qss"
+        : ":/styles/styles/lighttheme.qss";
+
+    QFile qssFile(path);
     if (qssFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QString styleSheet = QString::fromUtf8(qssFile.readAll());
-        qApp->setStyleSheet(styleSheet);
+        qApp->setStyleSheet(QString::fromUtf8(qssFile.readAll()));
         qssFile.close();
+    } else {
+        qWarning() << "Could not open stylesheet:" << path;
     }
     emit themeChanged(m_isDarkTheme);
 }
@@ -410,10 +434,10 @@ void MainWindow::saveLayout()
 
 void MainWindow::restoreLayout()
 {
-    auto geometry = SettingsManager::instance().windowGeometry();
-    auto state = SettingsManager::instance().windowState();
+    QByteArray geometry = SettingsManager::instance().windowGeometry();
+    QByteArray state    = SettingsManager::instance().windowState();
     if (!geometry.isEmpty()) restoreGeometry(geometry);
-    if (!state.isEmpty()) restoreState(state);
+    if (!state.isEmpty())    restoreState(state);
 }
 
 void MainWindow::updateWindowTitle()
@@ -445,9 +469,9 @@ void MainWindow::resizeEvent(QResizeEvent *event)
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() == Qt::Key_F5) onRunBenchmark();
+    if      (event->key() == Qt::Key_F5)    onRunBenchmark();
     else if (event->key() == Qt::Key_Escape) onStopBenchmark();
-    else if (event->key() == Qt::Key_Space) onPauseResume();
+    else if (event->key() == Qt::Key_Space)  onPauseResume();
     else QMainWindow::keyPressEvent(event);
 }
 
@@ -455,8 +479,7 @@ void MainWindow::updateGPUInfo()
 {
     if (CudaDeviceInfo::isCudaAvailable()) {
         auto props = CudaDeviceInfo::getProperties(SettingsManager::instance().cudaDeviceId());
-        QString text = CudaDeviceInfo::formatDeviceInfo(props);
-        gpuInfoLabel->setText(text);
+        gpuInfoLabel->setText(CudaDeviceInfo::formatDeviceInfo(props));
     } else {
         gpuInfoLabel->setText(tr("CUDA недоступна"));
     }
