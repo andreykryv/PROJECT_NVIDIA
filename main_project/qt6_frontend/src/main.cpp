@@ -8,9 +8,6 @@
 #include <QStyleFactory>
 
 int main(int argc, char *argv[]) {
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-
     QApplication app(argc, argv);
     app.setApplicationName("SortBench: CUDA vs CPU");
     app.setApplicationVersion("1.0.0");

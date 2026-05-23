@@ -729,3 +729,5 @@ namespace CPU {
     
     return "// Файл не найден";
 }
+
+#include "mainwindow.moc"

@@ -3,6 +3,7 @@
  * @brief Реализация симулятора бенчмарков.
  */
 #include "benchmarksimulator.h"
+#include "mainwindow.h"  // Для определения BenchmarkResult
 #include <QRandomGenerator>
 #include <QtMath>
 #include <chrono>

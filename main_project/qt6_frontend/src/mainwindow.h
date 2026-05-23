@@ -21,11 +21,13 @@
 #include <QBarSet>
 #include <QBarCategoryAxis>
 #include <QValueAxis>
+#include <QHeaderView>
 #include <QStackedWidget>
 #include <QTextEdit>
 #include <QMap>
 #include <QVector>
 #include <QTimer>
+#include <QProgressBar>
 
 class SortingVisualizer;
 class BenchmarkSimulator;
