@@ -26,110 +26,69 @@
 //   static int  deviceCount()
 //   static CudaDeviceProperties getProperties(int deviceIndex)
 //   static QList<CudaDeviceProperties> queryAllDevices()
-//   static bool isCudaAvailable()
-//   static size_t getFreeMemory(int deviceIndex)    — текущая свободная VRAM
+//   static size_t getFreeMemory(int deviceIndex)
 //   static size_t getTotalMemory(int deviceIndex)
-//   static QString formatDeviceInfo(CudaDeviceProperties) — форматированная строка
-////////////////////////////////////////////////////////////////////////////////
-
+//   static int getMemoryUsagePercent(int deviceIndex)
+//   static QString formatDeviceInfo(const CudaDeviceProperties& props)
+//   static QString getDeviceShortName(int deviceIndex)
+//   static bool hasDoublePrecision(int deviceIndex)
+//   static bool hasTensorCores(int deviceIndex)
+//   static bool hasRayTracingCores(int deviceIndex)
+//
 #ifndef CUDA_DEVICE_INFO_H
 #define CUDA_DEVICE_INFO_H
 
 #include <QString>
 #include <QList>
-#include <cstddef>
+
+// Проверяем, включена ли поддержка CUDA
+#ifndef USE_CUDA
+#define USE_CUDA 1
+#endif
+
+// Если CUDA не включена, то мы не будем использовать CUDA-функции
+// и будем использовать заглушку в cudadeviceinfo_stub.cpp
 namespace SortBench {
-// Структура свойств CUDA-устройства
 struct CudaDeviceProperties {
     QString name;
-    int index;
-    int computeCapabilityMajor;
-    int computeCapabilityMinor;
-    int multiprocessorCount;
-    int maxThreadsPerBlock;
-    int warpSize;
-    size_t totalGlobalMem;
-    size_t sharedMemPerBlock;
-    int clockRateKHz;
-    int memoryBusWidth;
-    int l2CacheSize;
-    bool unifiedAddressing;
-    int asyncEngineCount;
+    int index = -1;
+    int computeCapabilityMajor = 0;
+    int computeCapabilityMinor = 0;
+    int multiprocessorCount = 0;
+    int maxThreadsPerBlock = 0;
+    int warpSize = 0;
+    size_t totalGlobalMem = 0;
+    size_t sharedMemPerBlock = 0;
+    int clockRateKHz = 0;
+    int memoryBusWidth = 0;
+    int l2CacheSize = 0;
+    bool unifiedAddressing = false;
+    int asyncEngineCount = 0;
     QString cudaDriverVersion;
     QString cudaRuntimeVersion;
     
-    // Конструктор по умолчанию
-    CudaDeviceProperties() 
-        : index(-1)
-        , computeCapabilityMajor(0)
-        , computeCapabilityMinor(0)
-        , multiprocessorCount(0)
-        , maxThreadsPerBlock(0)
-        , warpSize(0)
-        , totalGlobalMem(0)
-        , sharedMemPerBlock(0)
-        , clockRateKHz(0)
-        , memoryBusWidth(0)
-        , l2CacheSize(0)
-        , unifiedAddressing(false)
-        , asyncEngineCount(0)
-    {}
-    
-    // Получить тактовую частоту в МГц
-    int clockRateMHz() const { return clockRateKHz / 1000; }
-    
-    // Получить общий объём памяти в МБ
-    size_t totalGlobalMemMB() const { return totalGlobalMem / (1024 * 1024); }
-    
-    // Получить shared memory в КБ
-    size_t sharedMemPerBlockKB() const { return sharedMemPerBlock / 1024; }
-    
-    // Строковое представление вычислительной способности
     QString computeCapabilityString() const {
         return QString("%1.%2").arg(computeCapabilityMajor).arg(computeCapabilityMinor);
     }
 };
 
-// Класс для работы с информацией о CUDA-устройствах
 class CudaDeviceInfo {
 public:
-    // Проверить доступность CUDA
-    static bool isCudaAvailable();
-    
-    // Получить количество CUDA-устройств
     static int deviceCount();
-    
-    // Получить свойства указанного устройства
+    static bool isCudaAvailable();
     static CudaDeviceProperties getProperties(int deviceIndex);
-    
-    // Запросить информацию обо всех устройствах
     static QList<CudaDeviceProperties> queryAllDevices();
-    
-    // Получить свободную память устройства (в байтах)
     static size_t getFreeMemory(int deviceIndex);
-    
-    // Получить общую память устройства (в байтах)
     static size_t getTotalMemory(int deviceIndex);
-    
-    // Получить процент использованной памяти
     static int getMemoryUsagePercent(int deviceIndex);
-    
-    // Форматировать информацию об устройстве для отображения
     static QString formatDeviceInfo(const CudaDeviceProperties& props);
-    
-    // Краткое описание устройства (для combo box)
     static QString getDeviceShortName(int deviceIndex);
-    
-    // Проверить поддержку double precision
     static bool hasDoublePrecision(int deviceIndex);
-    
-    // Проверить поддержку tensor cores
     static bool hasTensorCores(int deviceIndex);
-    
-    // Проверить поддержку ray tracing cores
     static bool hasRayTracingCores(int deviceIndex);
-    
-
 };
+
 } // namespace SortBench
+
 #endif // CUDA_DEVICE_INFO_H
+

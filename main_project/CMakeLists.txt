@@ -60,7 +60,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 # Сначала проверяем опции до объявления проекта
-option(ENABLE_CUDA "Включить поддержку CUDA" OFF)
+option(ENABLE_CUDA "Включить поддержку CUDA" ON)
 
 if(ENABLE_CUDA)
     project(SortBench VERSION 1.0.0 LANGUAGES CXX CUDA)
@@ -71,11 +71,11 @@ endif()
 # Стандарты языков
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_EXTENSIONS OFF)
+set(CMAKE_CUDA_EXTENSIONS ON)
 
 # Целевые архитектуры GPU
 set(CMAKE_CUDA_ARCHITECTURES "75;86;89")

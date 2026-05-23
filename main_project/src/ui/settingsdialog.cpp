@@ -329,10 +329,11 @@ void SettingsDialog::updateGPUInfo(int deviceIndex) {
                        .arg(props.name)
                        .arg(props.computeCapabilityString())
                        .arg(props.multiprocessorCount)
-                       .arg(props.clockRateMHz())
-                       .arg(props.totalGlobalMemMB())
+                       .arg(props.clockRateKHz / 1000)
+                       .arg(props.totalGlobalMem / (1024 * 1024))
                        .arg(props.l2CacheSize / 1024)
                        .arg(props.warpSize);
     
     m_gpuInfoLabel->setText(info);
 }
+

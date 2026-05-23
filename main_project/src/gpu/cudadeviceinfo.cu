@@ -135,7 +135,162 @@ QString CudaDeviceInfo::getDeviceShortName(int deviceIndex) {
     return QString("[%1] %2").arg(deviceIndex).arg(props.name);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// gpu/cudadeviceinfo.cu — реализация CUDA-функций (только при наличии CUDA)
+//
+// НАЗНАЧЕНИЕ:
+//   Реализует функции CudaDeviceInfo для сборок с CUDA.
+//   Не должен компилироваться в сборках без CUDA.
+////////////////////////////////////////////////////////////////////////////////
+
+#include "gpu/cudadeviceinfo.h"
+#include "gpu/cudadeviceinfo.cuh"
+
+#ifndef USE_CUDA
+#define USE_CUDA 1
+#endif
+
+#if USE_CUDA
+
+#include <cuda_runtime.h>
+#include <iostream>
+#include <stdexcept>
+#include <cstring>
+
+namespace SortBench {
+
+int CudaDeviceInfo::deviceCount() {
+    int count = 0;
+    cudaError_t err = cudaGetDeviceCount(&count);
+    if (err != cudaSuccess) return 0;
+    return count;
+}
+
+bool CudaDeviceInfo::isCudaAvailable() {
+    return deviceCount() > 0;
+}
+
+CudaDeviceProperties CudaDeviceInfo::getProperties(int deviceIndex) {
+    CudaDeviceProperties props{};
+
+    cudaDeviceProp prop;
+    cudaError_t err = cudaGetDeviceProperties(&prop, deviceIndex);
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA error:" << cudaGetErrorString(err) << std::endl;
+        return props;
+    }
+
+    props.name = QString::fromUtf8(prop.name);
+    props.index = deviceIndex;
+    props.computeCapabilityMajor = prop.major;   // FIX: было computeCapabilityMaj
+    props.computeCapabilityMinor = prop.minor;   // FIX: было computeCapabilityMin
+    props.multiprocessorCount = prop.multiProcessorCount;
+    props.maxThreadsPerBlock = prop.maxThreadsPerBlock;
+    props.warpSize = prop.warpSize;
+    props.totalGlobalMem = prop.totalGlobalMem;
+    props.sharedMemPerBlock = prop.sharedMemPerBlock;
+
+    // clockRate удалён в CUDA 13.x, используем значение по умолчанию
+    props.clockRateKHz = 0;
+    props.memoryBusWidth = prop.memoryBusWidth;
+    props.l2CacheSize = prop.l2CacheSize;
+    props.unifiedAddressing = prop.unifiedAddressing;
+    props.asyncEngineCount = prop.asyncEngineCount;
+
+    // Получаем версии драйвера и runtime
+    // Используем функции, доступные в CUDA 11.x и выше
+    int driverVersion, runtimeVersion;
+    cudaDriverGetVersion(&driverVersion);
+    cudaRuntimeGetVersion(&runtimeVersion);
+
+    props.cudaDriverVersion = QString::number(driverVersion);
+    props.cudaRuntimeVersion = QString::number(runtimeVersion);
+
+    return props;
+}
+
+QList<CudaDeviceProperties> CudaDeviceInfo::queryAllDevices() {
+    QList<CudaDeviceProperties> devices;
+    int count = deviceCount();
+    for (int i = 0; i < count; ++i) {
+        devices.append(getProperties(i));
+    }
+    return devices;
+}
+size_t CudaDeviceInfo::getFreeMemory(int deviceIndex) {
+    size_t freeMem = 0;
+    size_t totalMem = 0;
+    cudaError_t err = cudaMemGetInfo(&freeMem, &totalMem);
+    if (err != cudaSuccess) return 0;
+    return freeMem;
+}
+
+size_t CudaDeviceInfo::getTotalMemory(int deviceIndex) {
+    size_t freeMem = 0;
+    size_t totalMem = 0;
+    cudaError_t err = cudaMemGetInfo(&freeMem, &totalMem);
+    if (err != cudaSuccess) return 0;
+    return totalMem;
+}
+
+int CudaDeviceInfo::getMemoryUsagePercent(int deviceIndex) {
+    size_t freeMem = 0;
+    size_t totalMem = 0;
+    cudaError_t err = cudaMemGetInfo(&freeMem, &totalMem);
+    if (err != cudaSuccess) return 0;
+    if (totalMem == 0) return 0;
+    return static_cast<int>((1.0 - static_cast<double>(freeMem) / totalMem) * 100);
+}
+
+QString CudaDeviceInfo::formatDeviceInfo(const CudaDeviceProperties& props) {
+    QString format = QString("%1\n"
+        "Compute Capability: %2\n"
+        "SM: %3\n"
+        "Max threads/block: %4\n"
+        "VRAM: %5 MB\n"
+        "Clock Rate: %6 MHz\n"
+        "Memory Bus Width: %7 bits\n"
+        "L2 Cache: %8 KB\n"
+        "Unified Addressing: %9\n"
+        "Async Engines: %10\n")
+        .arg(props.name)
+        .arg(props.computeCapabilityString())
+        .arg(props.multiprocessorCount)
+        .arg(props.maxThreadsPerBlock)
+        .arg(props.totalGlobalMemMB())
+        .arg(props.clockRateMHz())
+        .arg(props.memoryBusWidth)
+        .arg(props.l2CacheSize / 1024)
+        .arg(props.unifiedAddressing ? "Yes" : "No")
+        .arg(props.asyncEngineCount);
+
+    return format;
+}
+
+QString CudaDeviceInfo::getDeviceShortName(int deviceIndex) {
+    CudaDeviceProperties props = getProperties(deviceIndex);
+    if (props.index == -1) return "Unknown Device";
+    return props.name;
+}
+
 bool CudaDeviceInfo::hasDoublePrecision(int deviceIndex) {
+    CudaDeviceProperties props = getProperties(deviceIndex);
+    return props.computeCapabilityMajor >= 1;
+}
+
+bool CudaDeviceInfo::hasTensorCores(int deviceIndex) {
+    CudaDeviceProperties props = getProperties(deviceIndex);
+    return props.computeCapabilityMajor >= 7;
+}
+
+bool CudaDeviceInfo::hasRayTracingCores(int deviceIndex) {
+    CudaDeviceProperties props = getProperties(deviceIndex);
+    return props.computeCapabilityMajor >= 7;
+}
+
+} // namespace SortBench
+
+#endif // USE_CUDA
     auto props = getProperties(deviceIndex);
     return (props.computeCapabilityMajor > 1) ||
            (props.computeCapabilityMajor == 1 && props.computeCapabilityMinor >= 3);
@@ -151,4 +306,4 @@ bool CudaDeviceInfo::hasRayTracingCores(int deviceIndex) {
     return props.computeCapabilityMajor >= 7 && props.computeCapabilityMinor >= 5;
 }
 
-} // namespace SortBench
+ // namespace SortBench

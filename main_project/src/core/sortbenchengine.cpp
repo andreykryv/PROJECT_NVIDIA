@@ -43,7 +43,7 @@ SortBenchEngine::~SortBenchEngine() {
 
 void SortBenchEngine::startPolling()
 {
-    m_gpuMemPollTimer->start(500);
+    m_gpuMemPollTimer->start(2000);
 }
 
 void SortBenchEngine::startBenchmark(const SortParams& params) {

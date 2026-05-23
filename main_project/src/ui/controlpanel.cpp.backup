@@ -288,9 +288,9 @@ void ControlPanel::connectSignals() {
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_gpuAlgorithmCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_enableCpuCheck, &QCheckBox::checkStateChanged,
+    connect(m_enableCpuCheck, &QCheckBox::stateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
-    connect(m_enableGpuCheck, &QCheckBox::checkStateChanged,
+    connect(m_enableGpuCheck, &QCheckBox::stateChanged,
             this, [this]() { emit parametersChanged(buildParams()); });
     connect(m_dataTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, [this]() { emit parametersChanged(buildParams()); });
