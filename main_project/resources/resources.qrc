@@ -1,9 +1,0 @@
-<RCC>
-    <qresource prefix="/styles">
-        <file>styles/darktheme.qss</file>
-        <file>styles/lighttheme.qss</file>
-    </qresource>
-    <qresource prefix="/fonts">
-        <file>fonts/RobotoMono-Regular.ttf</file>
-    </qresource>
-</RCC>

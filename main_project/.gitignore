@@ -1,56 +1,8 @@
-# .gitignore — игнорируемые файлы проекта SortBench
-#
-# Директории сборки CMake:
+node_modules/
 build/
-build-debug/
-build-release/
-cmake-build-debug/
-cmake-build-release/
-.cmake/
-
-# Qt-генерированные файлы (создаются AUTOMOC/AUTOUIC/AUTORCC):
-
-
-# Исполняемые файлы и библиотеки:
-*.exe
-*.dll
-*.so
-*.dylib
-*.a
-SortBench
-
-# Объектные файлы CUDA и C++:
-*.o
-*.obj
-*.cubin
-*.fatbin
-*.ptx
-
-# Логи и результаты тестов (создаются при работе приложения):
-*.log
-results/*.csv
-results/*.json
-*.csv
-*.json
-
-# IDE-специфичные файлы:
-.vscode/
-.idea/
-*.user
-*.pro.user
-CMakeUserPresets.json
-.clangd/
-compile_commands.json
-
-# macOS:
+dist/
+coverage/
 .DS_Store
-*.dSYM/
-
-# Windows:
-Thumbs.db
-desktop.ini
-
-# Временные файлы:
-*.tmp
-*.bak
-*~
+*.log
+.env*
+!.env.example
