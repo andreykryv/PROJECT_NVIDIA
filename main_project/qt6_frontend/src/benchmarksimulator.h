@@ -9,21 +9,8 @@
 #include <QString>
 #include <QTimer>
 
-struct BenchmarkResult {
-    QString algorithmName;
-    bool isGPU;
-    int arraySize;
-    double avgTimeMs;
-    double minTimeMs;
-    double maxTimeMs;
-    double medianTimeMs;
-    double varianceMs;
-    double avgUploadTimeMs;
-    double avgKernelTimeMs;
-    double avgDownloadTimeMs;
-    bool success;
-    QString errorMsg;
-};
+// BenchmarkResult определяется в mainwindow.h
+struct BenchmarkResult;
 
 class BenchmarkSimulator : public QObject {
     Q_OBJECT

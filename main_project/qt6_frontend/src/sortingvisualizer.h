@@ -42,6 +42,13 @@ private:
     void runHeapSort();
     void runBitonicSort();
     
+    // Вспомогательные функции для алгоритмов
+    void quickSortHelper(std::vector<int>& arr, int low, int high);
+    void mergeSortHelper(std::vector<int>& arr, int l, int r);
+    void heapify(std::vector<int>& arr, int n, int i);
+    void bitonicSort(std::vector<int>& arr, int low, int cnt, int dir);
+    void bitonicMerge(std::vector<int>& arr, int low, int cnt, int dir);
+    
     std::vector<int> m_data;
     std::vector<int> m_originalData;
     int m_activeIdx1 = -1;
