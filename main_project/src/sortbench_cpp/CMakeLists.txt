@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
+set(CMAKE_CUDA_HOST_COMPILER "/usr/bin/g++-12")
 project(SortBench LANGUAGES CXX CUDA)
 
 # Настройка стандартов C++ и CUDA
@@ -9,7 +10,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 # Оптимальные флаги оптимизации и архитектуры CUDA
 # sm_60 подходит для Pascal, sm_70 Volta, sm_75 Turing, sm_80 Ampere, sm_89 Ada Lovelace
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_60 -O3 --use_fast_math")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_86 -O3 --use_fast_math")
 
 # Включение автоматической генерации MOC/UIC/RCC для Qt6
 set(CMAKE_AUTOMOC ON)
@@ -33,7 +34,7 @@ add_executable(SortBench
     benchmark_runner.h
     benchmark_runner.cpp
 )
-
+find_package(CUDAToolkit REQUIRED)
 # Настройка линковки
 target_link_libraries(SortBench PRIVATE
     Qt6::Widgets

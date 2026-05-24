@@ -22,6 +22,7 @@
 #include <QColor>
 #include <QThread>
 #include <QRandomGenerator>
+#include "cpu_algorithms.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
