@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.20)
-set(CMAKE_CUDA_HOST_COMPILER "/usr/bin/g++-12")
 project(SortBench LANGUAGES CXX CUDA)
 
 # Настройка стандартов C++ и CUDA
@@ -7,6 +6,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+# Явный поиск CUDA Toolkit (создаст цель CUDA::cudart)
+find_package(CUDAToolkit REQUIRED)
 
 # Оптимальные флаги оптимизации и архитектуры CUDA
 # sm_60 подходит для Pascal, sm_70 Volta, sm_75 Turing, sm_80 Ampere, sm_89 Ada Lovelace
@@ -34,7 +35,7 @@ add_executable(SortBench
     benchmark_runner.h
     benchmark_runner.cpp
 )
-find_package(CUDAToolkit REQUIRED)
+
 # Настройка линковки
 target_link_libraries(SortBench PRIVATE
     Qt6::Widgets

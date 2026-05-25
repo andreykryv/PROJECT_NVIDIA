@@ -2,7 +2,7 @@
  * @file benchmark_runner.cpp
  * @brief Реализация потока бенчмарка.
  * Генерирует массивы данных с различным распределением с помощью средств библиотеки <random>.
- * Проводит сравнительные испытания алгоритмов, рассчитывает статистику.
+ * Проводит сравнительные испытания алгоритмов на CPU и GPU, рассчитывает статистику.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -44,7 +44,7 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
         }
     } 
     else if (dist == Benchmark::Distribution::Normal) {
-        std::normal_distribution<double> dis(0.0, 1.0); // Матожидание 0, СКО 1
+        std::normal_distribution<double> dis(0.0, 1.0);
         for (int i = 0; i < size; ++i) {
             data[i] = dis(gen) * 1000.0;
         }
@@ -55,11 +55,9 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
         }
     } 
     else if (dist == Benchmark::Distribution::AlmostSorted) {
-        // Сначала генерируем упорядоченный массив
         for (int i = 0; i < size; ++i) {
             data[i] = static_cast<double>(i);
         }
-        // Меняем местами случайные 5% элементов
         int swaps = std::max(1, static_cast<int>(size * 0.05));
         std::uniform_int_distribution<int> disIdx(0, size - 1);
         for (int s = 0; s < swaps; ++s) {
@@ -80,7 +78,6 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
 void BenchmarkRunner::run() {
     m_stopRequested = false;
     
-    // Считываем конфиг в локальную копию под мутексом
     Benchmark::Config cfg;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -111,7 +108,6 @@ void BenchmarkRunner::run() {
         for (int run = 0; run < cfg.runsCount; ++run) {
             if (m_stopRequested.load()) break;
 
-            // Генерируем свежий набор данных на каждый прогон во избежание оптимизаций кэша
             std::vector<double> data = generateData(cfg.arraySize, cfg.dist);
 
             if (isGPU) {
@@ -120,7 +116,6 @@ void BenchmarkRunner::run() {
                     errorMsg = "CUDA Error 702: Link disconnected (PCIe bus link down / GPU Bus simulator off)";
                     break;
                 }
-                // Вызов CUDA бенчмарков
                 GPU::GPUBenchmarkResult gRes;
                 if (algName == "GPU_Bitonic") {
                     gRes = GPU::runBitonicSort(data);
@@ -128,6 +123,12 @@ void BenchmarkRunner::run() {
                     gRes = GPU::runRadixSort(data);
                 } else if (algName == "GPU_OddEven") {
                     gRes = GPU::runOddEvenSort(data);
+                } else if (algName == "GPU_QuickSort") {
+                    gRes = GPU::runQuickSort(data);
+                } else if (algName == "GPU_MergeSort") {
+                    gRes = GPU::runMergeSort(data);
+                } else if (algName == "GPU_BogoSort") {
+                    gRes = GPU::runBogoSort(data);
                 }
 
                 if (!gRes.success) {
@@ -141,11 +142,10 @@ void BenchmarkRunner::run() {
                 kernelTimesMs.push_back(gRes.kernelTimeMs);
             } 
             else {
-                // Вызов CPU бенчмарков
                 std::atomic<bool> localStop(false);
                 CPU::SortContext ctx;
                 ctx.stopRequested = &localStop;
-                ctx.stepCallback = nullptr; // В бенчмарках коллбеки отключаем для скорости
+                ctx.stepCallback = nullptr; 
 
                 auto start = std::chrono::high_resolution_clock::now();
 
@@ -159,6 +159,36 @@ void BenchmarkRunner::run() {
                     CPU::heapSort(data, ctx);
                 } else if (algName == "CPU_TimSort") {
                     CPU::timSort(data, ctx);
+                } else if (algName == "CPU_BubbleSort") {
+                    CPU::bubbleSort(data, ctx);
+                } else if (algName == "CPU_SelectionSort") {
+                    CPU::selectionSort(data, ctx);
+                } else if (algName == "CPU_InsertionSort") {
+                    CPU::insertionSort(data, ctx);
+                } else if (algName == "CPU_ShellSort") {
+                    CPU::shellSort(data, ctx);
+                } else if (algName == "CPU_CocktailSort") {
+                    CPU::cocktailSort(data, ctx);
+                } else if (algName == "CPU_GnomeSort") {
+                    CPU::gnomeSort(data, ctx);
+                } else if (algName == "CPU_CombSort") {
+                    CPU::combSort(data, ctx);
+                } else if (algName == "CPU_RadixSortLSD") {
+                    CPU::radixSortLSD(data, ctx);
+                } else if (algName == "CPU_CountingSort") {
+                    CPU::countingSort(data, ctx);
+                } else if (algName == "CPU_BucketSort") {
+                    CPU::bucketSort(data, ctx);
+                } else if (algName == "CPU_PancakeSort") {
+                    CPU::pancakeSort(data, ctx);
+                } else if (algName == "CPU_BogoSort") {
+                    CPU::bogoSort(data, ctx);
+                } else if (algName == "CPU_StoogeSort") {
+                    CPU::stoogeSort(data, ctx);
+                } else if (algName == "CPU_OddEvenSort") {
+                    CPU::oddEvenSort(data, ctx);
+                } else if (algName == "CPU_CycleSort") {
+                    CPU::cycleSort(data, ctx);
                 }
 
                 auto end = std::chrono::high_resolution_clock::now();
@@ -169,7 +199,6 @@ void BenchmarkRunner::run() {
 
         if (m_stopRequested.load()) break;
 
-        // Расчет статистических показателей
         Benchmark::StatResults stats;
         stats.algorithmName = algName;
         stats.isGPU = isGPU;
@@ -178,29 +207,24 @@ void BenchmarkRunner::run() {
         stats.errorMsg = errorMsg;
 
         if (success && !runTimesMs.empty()) {
-            // Min & Max
             auto [minIt, maxIt] = std::minmax_element(runTimesMs.begin(), runTimesMs.end());
             stats.minTimeMs = *minIt;
             stats.maxTimeMs = *maxIt;
 
-            // Average (Среднее арифметическое)
             double sum = std::accumulate(runTimesMs.begin(), runTimesMs.end(), 0.0);
             stats.avgTimeMs = sum / runTimesMs.size();
 
-            // Median (Медиана)
             std::vector<double> sortedTimes = runTimesMs;
             std::sort(sortedTimes.begin(), sortedTimes.end());
             int mid = sortedTimes.size() / 2;
             stats.medianTimeMs = (sortedTimes.size() % 2 != 0) ? sortedTimes[mid] : (sortedTimes[mid - 1] + sortedTimes[mid]) / 2.0;
 
-            // Variance (Дисперсия)
             double accum = 0.0;
             for (double t : runTimesMs) {
                 accum += (t - stats.avgTimeMs) * (t - stats.avgTimeMs);
             }
             stats.varianceMs = (runTimesMs.size() > 1) ? accum / (runTimesMs.size() - 1) : 0.0;
 
-            // GPU доп. статистика
             if (isGPU) {
                 stats.avgUploadTimeMs = std::accumulate(uploadTimesMs.begin(), uploadTimesMs.end(), 0.0) / uploadTimesMs.size();
                 stats.avgDownloadTimeMs = std::accumulate(downloadTimesMs.begin(), downloadTimesMs.end(), 0.0) / downloadTimesMs.size();

@@ -1,6 +1,0 @@
-{
-  "name": "SortBench: CUDA vs CPU",
-  "description": "Полноценный интерактивный стенд для сравнения производительности сортировок на CPU и GPU (CUDA) с визуализацией, бенчмарками и экспортом готового проекта на C++/CUDA/Qt6 в ZIP.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

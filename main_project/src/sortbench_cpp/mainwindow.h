@@ -23,8 +23,8 @@
 #include <QBarSeries>
 #include <QBarCategoryAxis>
 #include <QValueAxis>
-// mainwindow.h
-#include <QListWidget>   // <-- добавьте эту строку
+#include <QListWidget>           // добавлено
+#include <QListWidgetItem>       // добавлено
 
 #include "sorting_visualizer.h"
 #include "benchmark_runner.h"

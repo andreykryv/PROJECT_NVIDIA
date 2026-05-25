@@ -13,7 +13,6 @@
 int main(int argc, char *argv[]) {
     // Поддержка High-DPI экранов
    
-
     QApplication app(argc, argv);
     app.setApplicationName("SortBench: CUDA vs CPU");
     app.setApplicationVersion("1.0.0");
