@@ -12,7 +12,8 @@
 
 int main(int argc, char *argv[]) {
     // Поддержка High-DPI экранов
-   
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
     QApplication app(argc, argv);
     app.setApplicationName("SortBench: CUDA vs CPU");

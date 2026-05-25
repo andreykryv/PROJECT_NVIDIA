@@ -330,7 +330,7 @@ export default function App() {
 
   // Статус подключения/телеметрии
   const [gpuConnected, setGpuConnected] = useState<boolean>(true);
-  const [gpuInfo, setGpuInfo] = useState<string>("Intel/AMD + NVIDIA RTX 4090 PCIe Gen4");
+  const [gpuInfo, setGpuInfo] = useState<string>("Intel Core i9-14900K | NVIDIA GeForce RTX 4090 24GB PCIe Gen4");
 
   // --- Настройки аппаратной платформы ---
   const [pcieGen, setPcieGen] = useState<string>("Gen4");

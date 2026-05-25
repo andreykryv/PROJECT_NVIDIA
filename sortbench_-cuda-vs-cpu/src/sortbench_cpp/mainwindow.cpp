@@ -22,9 +22,6 @@
 #include <QColor>
 #include <QThread>
 #include <QRandomGenerator>
-#include "cpu_algorithms.h" 
-// mainwindow.cpp
- // замените на реальное имя вашего заголовка
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
