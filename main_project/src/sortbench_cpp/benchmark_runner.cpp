@@ -1,8 +1,6 @@
 /**
  * @file benchmark_runner.cpp
  * @brief Реализация потока бенчмарка.
- * Генерирует массивы данных с различным распределением с помощью средств библиотеки <random>.
- * Проводит сравнительные испытания алгоритмов на CPU и GPU, рассчитывает статистику.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -39,25 +37,17 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
 
     if (dist == Benchmark::Distribution::Uniform) {
         std::uniform_real_distribution<double> dis(-10000.0, 10000.0);
-        for (int i = 0; i < size; ++i) {
-            data[i] = dis(gen);
-        }
+        for (int i = 0; i < size; ++i) data[i] = dis(gen);
     } 
     else if (dist == Benchmark::Distribution::Normal) {
         std::normal_distribution<double> dis(0.0, 1.0);
-        for (int i = 0; i < size; ++i) {
-            data[i] = dis(gen) * 1000.0;
-        }
+        for (int i = 0; i < size; ++i) data[i] = dis(gen) * 1000.0;
     } 
     else if (dist == Benchmark::Distribution::ReverseSorted) {
-        for (int i = 0; i < size; ++i) {
-            data[i] = static_cast<double>(size - i);
-        }
+        for (int i = 0; i < size; ++i) data[i] = static_cast<double>(size - i);
     } 
     else if (dist == Benchmark::Distribution::AlmostSorted) {
-        for (int i = 0; i < size; ++i) {
-            data[i] = static_cast<double>(i);
-        }
+        for (int i = 0; i < size; ++i) data[i] = static_cast<double>(i);
         int swaps = std::max(1, static_cast<int>(size * 0.05));
         std::uniform_int_distribution<int> disIdx(0, size - 1);
         for (int s = 0; s < swaps; ++s) {
@@ -71,7 +61,6 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
         double constantValue = dis(gen);
         std::fill(data.begin(), data.end(), constantValue);
     }
-
     return data;
 }
 
@@ -117,18 +106,57 @@ void BenchmarkRunner::run() {
                     break;
                 }
                 GPU::GPUBenchmarkResult gRes;
+                // Все GPU алгоритмы (20 штук)
                 if (algName == "GPU_Bitonic") {
                     gRes = GPU::runBitonicSort(data);
                 } else if (algName == "GPU_Radix") {
                     gRes = GPU::runRadixSort(data);
                 } else if (algName == "GPU_OddEven") {
                     gRes = GPU::runOddEvenSort(data);
+                } else if (algName == "GPU_StdSort") {
+                    gRes = GPU::runStdSort(data);
                 } else if (algName == "GPU_QuickSort") {
                     gRes = GPU::runQuickSort(data);
                 } else if (algName == "GPU_MergeSort") {
                     gRes = GPU::runMergeSort(data);
+                } else if (algName == "GPU_HeapSort") {
+                    gRes = GPU::runHeapSort(data);
+                } else if (algName == "GPU_TimSort") {
+                    gRes = GPU::runTimSort(data);
+                } else if (algName == "GPU_BubbleSort") {
+                    gRes = GPU::runBubbleSort(data);
+                } else if (algName == "GPU_SelectionSort") {
+                    gRes = GPU::runSelectionSort(data);
+                } else if (algName == "GPU_InsertionSort") {
+                    gRes = GPU::runInsertionSort(data);
+                } else if (algName == "GPU_ShellSort") {
+                    gRes = GPU::runShellSort(data);
+                } else if (algName == "GPU_CocktailSort") {
+                    gRes = GPU::runCocktailSort(data);
+                } else if (algName == "GPU_GnomeSort") {
+                    gRes = GPU::runGnomeSort(data);
+                } else if (algName == "GPU_CombSort") {
+                    gRes = GPU::runCombSort(data);
+                } else if (algName == "GPU_RadixSortLSD") {
+                    gRes = GPU::runRadixSortLSD(data);
+                } else if (algName == "GPU_CountingSort") {
+                    gRes = GPU::runCountingSort(data);
+                } else if (algName == "GPU_BucketSort") {
+                    gRes = GPU::runBucketSort(data);
+                } else if (algName == "GPU_PancakeSort") {
+                    gRes = GPU::runPancakeSort(data);
                 } else if (algName == "GPU_BogoSort") {
                     gRes = GPU::runBogoSort(data);
+                } else if (algName == "GPU_StoogeSort") {
+                    gRes = GPU::runStoogeSort(data);
+                } else if (algName == "GPU_OddEvenSort") {
+                    gRes = GPU::runOddEvenSortCPU(data);
+                } else if (algName == "GPU_CycleSort") {
+                    gRes = GPU::runCycleSort(data);
+                } else {
+                    success = false;
+                    errorMsg = "Неизвестный GPU-алгоритм: " + algName;
+                    break;
                 }
 
                 if (!gRes.success) {
@@ -210,19 +238,14 @@ void BenchmarkRunner::run() {
             auto [minIt, maxIt] = std::minmax_element(runTimesMs.begin(), runTimesMs.end());
             stats.minTimeMs = *minIt;
             stats.maxTimeMs = *maxIt;
-
             double sum = std::accumulate(runTimesMs.begin(), runTimesMs.end(), 0.0);
             stats.avgTimeMs = sum / runTimesMs.size();
-
             std::vector<double> sortedTimes = runTimesMs;
             std::sort(sortedTimes.begin(), sortedTimes.end());
             int mid = sortedTimes.size() / 2;
-            stats.medianTimeMs = (sortedTimes.size() % 2 != 0) ? sortedTimes[mid] : (sortedTimes[mid - 1] + sortedTimes[mid]) / 2.0;
-
+            stats.medianTimeMs = (sortedTimes.size() % 2 != 0) ? sortedTimes[mid] : (sortedTimes[mid-1] + sortedTimes[mid]) / 2.0;
             double accum = 0.0;
-            for (double t : runTimesMs) {
-                accum += (t - stats.avgTimeMs) * (t - stats.avgTimeMs);
-            }
+            for (double t : runTimesMs) accum += (t - stats.avgTimeMs) * (t - stats.avgTimeMs);
             stats.varianceMs = (runTimesMs.size() > 1) ? accum / (runTimesMs.size() - 1) : 0.0;
 
             if (isGPU) {
@@ -230,23 +253,14 @@ void BenchmarkRunner::run() {
                 stats.avgDownloadTimeMs = std::accumulate(downloadTimesMs.begin(), downloadTimesMs.end(), 0.0) / downloadTimesMs.size();
                 stats.avgKernelTimeMs = std::accumulate(kernelTimesMs.begin(), kernelTimesMs.end(), 0.0) / kernelTimesMs.size();
             } else {
-                stats.avgUploadTimeMs = 0;
-                stats.avgDownloadTimeMs = 0;
-                stats.avgKernelTimeMs = 0;
+                stats.avgUploadTimeMs = stats.avgDownloadTimeMs = stats.avgKernelTimeMs = 0;
             }
         } else {
-            stats.minTimeMs = 0;
-            stats.maxTimeMs = 0;
-            stats.avgTimeMs = 0;
-            stats.medianTimeMs = 0;
-            stats.varianceMs = 0;
-            stats.avgUploadTimeMs = 0;
-            stats.avgDownloadTimeMs = 0;
-            stats.avgKernelTimeMs = 0;
+            stats.minTimeMs = stats.maxTimeMs = stats.avgTimeMs = stats.medianTimeMs = stats.varianceMs = 0;
+            stats.avgUploadTimeMs = stats.avgDownloadTimeMs = stats.avgKernelTimeMs = 0;
         }
 
         emit algorithmCompleted(stats);
-
         int progress = static_cast<int>(static_cast<double>(algIdx + 1) / totalAlgorithms * 100.0);
         emit progressUpdated(progress);
     }

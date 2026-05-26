@@ -23,7 +23,8 @@
 #include <QThread>
 #include <QRandomGenerator>
 #include <QListWidgetItem>      // добавлено
-#include "cpu_algorithms.h"     // добавлено
+#include "cpu_algorithms.h" 
+#include <QtGlobal>    // добавлено
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -572,7 +573,7 @@ void MainWindow::setupCharts() {
 }
 
 void MainWindow::loadAvailableAlgorithms() {
-    // Наполнение чекбоксов бенчмарка
+    // CPU алгоритмы (20 шт.)
     m_algListWidget->addItem("CPU: std::sort (STL Intro)");
     m_algListWidget->addItem("CPU: QuickSort (Быстрая)");
     m_algListWidget->addItem("CPU: MergeSort (Слиянием)");
@@ -594,20 +595,39 @@ void MainWindow::loadAvailableAlgorithms() {
     m_algListWidget->addItem("CPU: OddEvenSort (Чет-Нечет)");
     m_algListWidget->addItem("CPU: CycleSort (Циклическая)");
 
+    // GPU алгоритмы (20 шт.) – все соответствуют CPU
     m_algListWidget->addItem("GPU: Bitonic Sort (CUDA)");
     m_algListWidget->addItem("GPU: Radix Sort (CUDA)");
     m_algListWidget->addItem("GPU: Odd-Even (CUDA)");
-    m_algListWidget->addItem("GPU: QuickSort (CUDA)");
-    m_algListWidget->addItem("GPU: MergeSort (CUDA)");
-    m_algListWidget->addItem("GPU: BogoSort (CUDA)");
+    m_algListWidget->addItem("GPU: std::sort (STL Intro)");
+    m_algListWidget->addItem("GPU: QuickSort (Быстрая)");
+    m_algListWidget->addItem("GPU: MergeSort (Слиянием)");
+    m_algListWidget->addItem("GPU: HeapSort (Пирамид)");
+    m_algListWidget->addItem("GPU: TimSort (Гибридная)");
+    m_algListWidget->addItem("GPU: BubbleSort (Пузырек)");
+    m_algListWidget->addItem("GPU: SelectionSort (Выбором)");
+    m_algListWidget->addItem("GPU: InsertionSort (Вставками)");
+    m_algListWidget->addItem("GPU: ShellSort (Шелла)");
+    m_algListWidget->addItem("GPU: CocktailSort (Шейкер)");
+    m_algListWidget->addItem("GPU: GnomeSort (Гномья)");
+    m_algListWidget->addItem("GPU: CombSort (Расческой)");
+    m_algListWidget->addItem("GPU: RadixSortLSD (LSD Поразр)");
+    m_algListWidget->addItem("GPU: CountingSort (Подсчетом)");
+    m_algListWidget->addItem("GPU: BucketSort (Блочная)");
+    m_algListWidget->addItem("GPU: PancakeSort (Блинная)");
+    m_algListWidget->addItem("GPU: BogoSort (Случайная)");
+    m_algListWidget->addItem("GPU: StoogeSort (Придурковатая)");
+    m_algListWidget->addItem("GPU: OddEvenSort (Чет-Нечет)");
+    m_algListWidget->addItem("GPU: CycleSort (Циклическая)");
 
-    // Выбираем по умолчанию, как в React приложении
-    m_algListWidget->item(0)->setSelected(true);  // CPU: std::sort
-    m_algListWidget->item(1)->setSelected(true);  // CPU: QuickSort
-    m_algListWidget->item(20)->setSelected(true); // GPU: Bitonic
-    m_algListWidget->item(21)->setSelected(true); // GPU: Radix
+    // Выбираем по умолчанию несколько алгоритмов
+    m_algListWidget->item(0)->setSelected(true);   // CPU std::sort
+    m_algListWidget->item(1)->setSelected(true);   // CPU QuickSort
+    m_algListWidget->item(20)->setSelected(true);  // GPU Bitonic
+    m_algListWidget->item(21)->setSelected(true);  // GPU Radix
 
-    // Наполнение выпадающего списка визуализатора
+    // Заполнение выпадающего списка визуализатора (оставляем как было – только CPU)
+    m_visualAlgCombo->clear();
     m_visualAlgCombo->addItem("QuickSort (Быстрая)", "CPU_QuickSort");
     m_visualAlgCombo->addItem("MergeSort (Слиянием)", "CPU_MergeSort");
     m_visualAlgCombo->addItem("HeapSort (Кучей)", "CPU_HeapSort");
@@ -654,36 +674,55 @@ void MainWindow::onStartBenchmark() {
     cfg.isDoublePrecision = m_dataTypeCombo->currentIndex() > 0;
     cfg.gpuConnected = m_gpuConnected;
 
-    for (auto* item : items) {
-        QString txt = item->text();
-        if (txt.contains("std::sort")) cfg.selectedAlgorithms.push_back("CPU_std::sort");
-        else if (txt.contains("QuickSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_QuickSort");
-        else if (txt.contains("MergeSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_MergeSort");
-        else if (txt.contains("HeapSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_HeapSort");
-        else if (txt.contains("TimSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_TimSort");
-        else if (txt.contains("BubbleSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_BubbleSort");
-        else if (txt.contains("SelectionSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_SelectionSort");
-        else if (txt.contains("InsertionSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_InsertionSort");
-        else if (txt.contains("ShellSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_ShellSort");
-        else if (txt.contains("CocktailSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_CocktailSort");
-        else if (txt.contains("GnomeSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_GnomeSort");
-        else if (txt.contains("CombSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_CombSort");
-        else if (txt.contains("RadixSortLSD") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_RadixSortLSD");
-        else if (txt.contains("CountingSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_CountingSort");
-        else if (txt.contains("BucketSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_BucketSort");
-        else if (txt.contains("PancakeSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_PancakeSort");
-        else if (txt.contains("BogoSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_BogoSort");
-        else if (txt.contains("StoogeSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_StoogeSort");
-        else if (txt.contains("OddEvenSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_OddEvenSort");
-        else if (txt.contains("CycleSort") && txt.contains("CPU")) cfg.selectedAlgorithms.push_back("CPU_CycleSort");
-        
-        else if (txt.contains("Bitonic") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_Bitonic");
-        else if (txt.contains("Radix") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_Radix");
-        else if (txt.contains("Odd-Even") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_OddEven");
-        else if (txt.contains("QuickSort") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_QuickSort");
-        else if (txt.contains("MergeSort") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_MergeSort");
-        else if (txt.contains("BogoSort") && txt.contains("GPU")) cfg.selectedAlgorithms.push_back("GPU_BogoSort");
-    }
+   for (auto* item : qAsConst(items)) {
+    QString txt = item->text();
+    // CPU алгоритмы (20)
+    if (txt.contains("CPU: std::sort")) cfg.selectedAlgorithms.push_back("CPU_std::sort");
+    else if (txt.contains("CPU: QuickSort")) cfg.selectedAlgorithms.push_back("CPU_QuickSort");
+    else if (txt.contains("CPU: MergeSort")) cfg.selectedAlgorithms.push_back("CPU_MergeSort");
+    else if (txt.contains("CPU: HeapSort")) cfg.selectedAlgorithms.push_back("CPU_HeapSort");
+    else if (txt.contains("CPU: TimSort")) cfg.selectedAlgorithms.push_back("CPU_TimSort");
+    else if (txt.contains("CPU: BubbleSort")) cfg.selectedAlgorithms.push_back("CPU_BubbleSort");
+    else if (txt.contains("CPU: SelectionSort")) cfg.selectedAlgorithms.push_back("CPU_SelectionSort");
+    else if (txt.contains("CPU: InsertionSort")) cfg.selectedAlgorithms.push_back("CPU_InsertionSort");
+    else if (txt.contains("CPU: ShellSort")) cfg.selectedAlgorithms.push_back("CPU_ShellSort");
+    else if (txt.contains("CPU: CocktailSort")) cfg.selectedAlgorithms.push_back("CPU_CocktailSort");
+    else if (txt.contains("CPU: GnomeSort")) cfg.selectedAlgorithms.push_back("CPU_GnomeSort");
+    else if (txt.contains("CPU: CombSort")) cfg.selectedAlgorithms.push_back("CPU_CombSort");
+    else if (txt.contains("CPU: RadixSortLSD")) cfg.selectedAlgorithms.push_back("CPU_RadixSortLSD");
+    else if (txt.contains("CPU: CountingSort")) cfg.selectedAlgorithms.push_back("CPU_CountingSort");
+    else if (txt.contains("CPU: BucketSort")) cfg.selectedAlgorithms.push_back("CPU_BucketSort");
+    else if (txt.contains("CPU: PancakeSort")) cfg.selectedAlgorithms.push_back("CPU_PancakeSort");
+    else if (txt.contains("CPU: BogoSort")) cfg.selectedAlgorithms.push_back("CPU_BogoSort");
+    else if (txt.contains("CPU: StoogeSort")) cfg.selectedAlgorithms.push_back("CPU_StoogeSort");
+    else if (txt.contains("CPU: OddEvenSort")) cfg.selectedAlgorithms.push_back("CPU_OddEvenSort");
+    else if (txt.contains("CPU: CycleSort")) cfg.selectedAlgorithms.push_back("CPU_CycleSort");
+    
+    // GPU алгоритмы (20)
+    else if (txt.contains("GPU: Bitonic")) cfg.selectedAlgorithms.push_back("GPU_Bitonic");
+    else if (txt.contains("GPU: Radix")) cfg.selectedAlgorithms.push_back("GPU_Radix");
+    else if (txt.contains("GPU: Odd-Even")) cfg.selectedAlgorithms.push_back("GPU_OddEven");
+    else if (txt.contains("GPU: std::sort")) cfg.selectedAlgorithms.push_back("GPU_StdSort");
+    else if (txt.contains("GPU: QuickSort")) cfg.selectedAlgorithms.push_back("GPU_QuickSort");
+    else if (txt.contains("GPU: MergeSort")) cfg.selectedAlgorithms.push_back("GPU_MergeSort");
+    else if (txt.contains("GPU: HeapSort")) cfg.selectedAlgorithms.push_back("GPU_HeapSort");
+    else if (txt.contains("GPU: TimSort")) cfg.selectedAlgorithms.push_back("GPU_TimSort");
+    else if (txt.contains("GPU: BubbleSort")) cfg.selectedAlgorithms.push_back("GPU_BubbleSort");
+    else if (txt.contains("GPU: SelectionSort")) cfg.selectedAlgorithms.push_back("GPU_SelectionSort");
+    else if (txt.contains("GPU: InsertionSort")) cfg.selectedAlgorithms.push_back("GPU_InsertionSort");
+    else if (txt.contains("GPU: ShellSort")) cfg.selectedAlgorithms.push_back("GPU_ShellSort");
+    else if (txt.contains("GPU: CocktailSort")) cfg.selectedAlgorithms.push_back("GPU_CocktailSort");
+    else if (txt.contains("GPU: GnomeSort")) cfg.selectedAlgorithms.push_back("GPU_GnomeSort");
+    else if (txt.contains("GPU: CombSort")) cfg.selectedAlgorithms.push_back("GPU_CombSort");
+    else if (txt.contains("GPU: RadixSortLSD")) cfg.selectedAlgorithms.push_back("GPU_RadixSortLSD");
+    else if (txt.contains("GPU: CountingSort")) cfg.selectedAlgorithms.push_back("GPU_CountingSort");
+    else if (txt.contains("GPU: BucketSort")) cfg.selectedAlgorithms.push_back("GPU_BucketSort");
+    else if (txt.contains("GPU: PancakeSort")) cfg.selectedAlgorithms.push_back("GPU_PancakeSort");
+    else if (txt.contains("GPU: BogoSort")) cfg.selectedAlgorithms.push_back("GPU_BogoSort");
+    else if (txt.contains("GPU: StoogeSort")) cfg.selectedAlgorithms.push_back("GPU_StoogeSort");
+    else if (txt.contains("GPU: OddEvenSort")) cfg.selectedAlgorithms.push_back("GPU_OddEvenSort");
+    else if (txt.contains("GPU: CycleSort")) cfg.selectedAlgorithms.push_back("GPU_CycleSort");
+}
 
     m_benchRunner->setConfig(cfg);
     m_benchRunner->start();

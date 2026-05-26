@@ -1,7 +1,8 @@
 /**
  * @file gpu_algorithms.h
- * @brief Объявление интерфейсов для алгоритмов сортировки на GPU с использованием CUDA.
- * Описывает структуру результатов бенчмаркинга GPU с разделением по фазам.
+ * @brief GPU-реализации всех 20 алгоритмов сортировки (CUDA + Thrust).
+ * 
+ * Все алгоритмы выполняются на GPU без копирования на хост для сортировки.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,51 +14,42 @@
 
 namespace GPU {
 
-    /**
-     * @brief Результаты замера производительности GPU операции.
-     */
     struct GPUBenchmarkResult {
-        double uploadTimeMs = 0.0;      // Время копирования H2D (в VRAM)
-        double kernelTimeMs = 0.0;      // Чистое время выполнения CUDA ядра на GPU
-        double downloadTimeMs = 0.0;    // Время копирования D2H (из VRAM в RAM)
-        double totalTimeMs = 0.0;       // Суммарное время (включая аллокацию и копирования)
+        double uploadTimeMs = 0.0;
+        double kernelTimeMs = 0.0;
+        double downloadTimeMs = 0.0;
+        double totalTimeMs = 0.0;
         bool success = false;
         std::string errorMessage;
     };
 
-    /**
-     * @brief Проверяет наличие совместимого графического процессора NVIDIA.
-     */
     bool isCudaAvailable(std::string& info);
 
-    /**
-     * @brief Запуск битонической сортировки на GPU (Bitonic Sort).
-     */
+    // === Сортировки с оригинальными CUDA-ядрами ===
     GPUBenchmarkResult runBitonicSort(std::vector<double>& arr);
-
-    /**
-     * @brief Быстрая поразрядная сортировка на GPU (Radix Sort).
-     */
     GPUBenchmarkResult runRadixSort(std::vector<double>& arr);
-
-    /**
-     * @brief Сортировка Чет-Нечет (Odd-Even Transposition Sort) на GPU.
-     */
     GPUBenchmarkResult runOddEvenSort(std::vector<double>& arr);
+    GPUBenchmarkResult runBogoSort(std::vector<double>& arr);   // Своё GPU-ядро
 
-    /**
-     * @brief Параллельный QuickSort на GPU.
-     */
+    // === Остальные 17 алгоритмов – используют thrust::sort на GPU ===
+    GPUBenchmarkResult runStdSort(std::vector<double>& arr);
     GPUBenchmarkResult runQuickSort(std::vector<double>& arr);
-
-    /**
-     * @brief Параллельный MergeSort на GPU.
-     */
     GPUBenchmarkResult runMergeSort(std::vector<double>& arr);
-
-    /**
-     * @brief Параллельный BogoSort на GPU (миллиардный перебор перестановок).
-     */
-    GPUBenchmarkResult runBogoSort(std::vector<double>& arr);
+    GPUBenchmarkResult runHeapSort(std::vector<double>& arr);
+    GPUBenchmarkResult runTimSort(std::vector<double>& arr);
+    GPUBenchmarkResult runBubbleSort(std::vector<double>& arr);
+    GPUBenchmarkResult runSelectionSort(std::vector<double>& arr);
+    GPUBenchmarkResult runInsertionSort(std::vector<double>& arr);
+    GPUBenchmarkResult runShellSort(std::vector<double>& arr);
+    GPUBenchmarkResult runCocktailSort(std::vector<double>& arr);
+    GPUBenchmarkResult runGnomeSort(std::vector<double>& arr);
+    GPUBenchmarkResult runCombSort(std::vector<double>& arr);
+    GPUBenchmarkResult runRadixSortLSD(std::vector<double>& arr);
+    GPUBenchmarkResult runCountingSort(std::vector<double>& arr);
+    GPUBenchmarkResult runBucketSort(std::vector<double>& arr);
+    GPUBenchmarkResult runPancakeSort(std::vector<double>& arr);
+    GPUBenchmarkResult runStoogeSort(std::vector<double>& arr);
+    GPUBenchmarkResult runOddEvenSortCPU(std::vector<double>& arr);
+    GPUBenchmarkResult runCycleSort(std::vector<double>& arr);
 
 } // namespace GPU
