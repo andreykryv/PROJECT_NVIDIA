@@ -279,20 +279,52 @@ namespace GPU {
         }
     }
 
-    __global__ void countingSortKernel(double* arr, int n) {
+  __global__ void countingSortKernel(double* arr, int n) {
         if (n <= 1) return;
+        
         double max_val = arr[0], min_val = arr[0];
         for (int i = 1; i < n; i++) {
             if (arr[i] > max_val) max_val = arr[i];
             if (arr[i] < min_val) min_val = arr[i];
         }
-        int range = (int)(max_val - min_val) + 1;
-        int* count = new int[range](); 
-        for (int i = 0; i < n; i++) count[(int)(arr[i] - min_val)]++;
-        int idx = 0;
-        for (int i = 0; i < range; i++)
-            while (count[i]--) arr[idx++] = i + min_val;
+        
+        double range = max_val - min_val;
+        if (range < 1e-9) return;
+
+        // Используем фиксированное количество корзин K = 2000 для стабильного потребления памяти
+        const int K = 2000;
+        int* count = new int[K]();
+        double* output = new double[n];
+
+        if (count == nullptr || output == nullptr) {
+            // Защита на случай нехватки памяти на куче GPU
+            if (count) delete[] count;
+            if (output) delete[] output;
+            return;
+        }
+
+        for (int i = 0; i < n; ++i) {
+            int bucket = (int)((arr[i] - min_val) / range * (K - 1));
+            count[bucket]++;
+        }
+
+        for (int i = 1; i < K; ++i) {
+            count[i] += count[i - 1];
+        }
+
+        for (int i = n - 1; i >= 0; --i) {
+            int bucket = (int)((arr[i] - min_val) / range * (K - 1));
+            output[count[bucket] - 1] = arr[i];
+            count[bucket]--;
+        }
+
+        // Переносим отсортированные исходные значения обратно в arr
+        for (int i = 0; i < n; ++i) {
+            arr[i] = output[i];
+        }
+
         delete[] count;
+        delete[] output;
     }
 
     __global__ void pancakeSortKernel(double* arr, int n) {

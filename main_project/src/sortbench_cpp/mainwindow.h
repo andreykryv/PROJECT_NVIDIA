@@ -1,6 +1,6 @@
 /**
  * @file mainwindow.h
- * @brief Главное окно интерфейса SortBench — Teamify Dashboard Style.
+ * @brief Главное окно интерфейса SortBench.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,15 +21,18 @@
 #include <QLineEdit>
 #include <QStackedWidget>
 #include <QScrollArea>
-#include <QChartView>
-#include <QBarSeries>
-#include <QBarCategoryAxis>
-#include <QValueAxis>
-#include <QListWidget>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <vector>
+
+// Заголовочные файлы Qt Charts для компиляции объявлений типов
+#include <QChartView>
+#include <QChart>
+#include <QAbstractAxis>
+#include <QBarSeries>
+#include <QBarCategoryAxis>
+#include <QValueAxis>
 
 #include "sorting_visualizer.h"
 #include "benchmark_runner.h"
@@ -129,7 +132,7 @@ private:
     QChartView*         m_chartView   = nullptr;
     QChart*             m_chart       = nullptr;
     QBarSeries*         m_barSeries   = nullptr;
-    QBarCategoryAxis*   m_axisX       = nullptr;
+    QAbstractAxis*      m_axisX       = nullptr; // Базовый класс для гибкой подмены осей на лету
     QValueAxis*         m_axisY       = nullptr;
     QTableWidget*       m_statsTable  = nullptr;
 
@@ -161,6 +164,10 @@ private:
     QPushButton*   m_exportPngBtn   = nullptr;
     QProgressBar*  m_benchProgress  = nullptr;
 
+    // Новые элементы управления и таймеры
+    QCheckBox*     m_sweepModeCheck = nullptr;
+    QTimer*        m_telemetryTimer = nullptr;
+
     // Верхний поиск
     QLineEdit*     m_topSearchEdit  = nullptr;
 
@@ -170,6 +177,8 @@ private:
     QLabel*      m_sidebarGpuLabel  = nullptr;
     QPushButton* m_toggleGpuBtn     = nullptr;
     QWidget*     m_gpuLedIndicator  = nullptr;
+    QProgressBar* m_gpuVramBar      = nullptr;
+    QLabel*      m_gpuVramLabel     = nullptr;
 
     // Данные рантайма
     BenchmarkRunner*              m_benchRunner    = nullptr;

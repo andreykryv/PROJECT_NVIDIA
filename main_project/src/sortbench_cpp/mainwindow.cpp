@@ -15,7 +15,10 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QBarSet>
-#include <QChart>
+#include <QBarSeries>
+#include <QLineSeries>
+#include <QValueAxis>
+#include <QBarCategoryAxis>
 #include <QColor>
 #include <QThread>
 #include <QRandomGenerator>
@@ -99,7 +102,6 @@ static const QList<SidebarAlgInfo> sidebarAlgs = {
     {"GPU Selection", "Выборочная сортировка на GPU ядрах", "GPU_SelectionSort", true}
 };
 
-// --- Чтение реального CPU ---
 static QString getRealCpuName() {
     QString cpu = "";
 #ifdef Q_OS_WIN
@@ -134,7 +136,6 @@ static QString getRealCpuName() {
     return cpu;
 }
 
-// --- Чтение реального GPU ---
 static QString getRealGpuName() {
     int deviceCount = 0;
     cudaError_t err = cudaGetDeviceCount(&deviceCount);
@@ -147,7 +148,6 @@ static QString getRealGpuName() {
     return "GPU Offline / No CUDA Device";
 }
 
-// --- Реализация AlgTile ---
 AlgTile::AlgTile(const QString& name, const QString& shortDesc, const QString& id, bool gpu, QWidget* parent)
     : QFrame(parent), algId(id), isGPU(gpu) {
     setObjectName("algTile");
@@ -195,7 +195,6 @@ void AlgTile::mousePressEvent(QMouseEvent* event) {
     QFrame::mousePressEvent(event);
 }
 
-// --- Реализация DescCard ---
 DescCard::DescCard(const AlgDescData& data, QWidget* parent) : QFrame(parent) {
     setObjectName("descCard");
     QVBoxLayout* lay = new QVBoxLayout(this);
@@ -239,11 +238,13 @@ static QFrame* hLine(QWidget* parent) {
     f->setStyleSheet(QString("background:%1; border:none;").arg(C_BORDER));
     return f;
 }
+
 struct MetricCard {
     QFrame* frame;
     QLabel* value;
     QLabel* badge;
 };
+
 static MetricCard makeMetricCard(const QString& icon, const QString& title, const QString& defaultVal,
                                   const QString& badgeText, const QString& badgeColor, QWidget* parent) {
     QFrame* card = new QFrame(parent);
@@ -297,6 +298,12 @@ MainWindow::MainWindow(QWidget *parent)
     setupCharts();
     loadAvailableAlgorithms();
     onGenerateVisualArray();
+
+    // Инициализация периодического опроса телеметрии CUDA VRAM
+    m_telemetryTimer = new QTimer(this);
+    connect(m_telemetryTimer, &QTimer::timeout, this, &MainWindow::updateSystemTelemetry);
+    m_telemetryTimer->start(1000); 
+
     updateSystemTelemetry();
 }
 
@@ -490,7 +497,6 @@ void MainWindow::setupTopBar(QVBoxLayout* parent) {
     searchLay->addWidget(m_topSearchEdit);
     lay->addWidget(searchFrame);
 
-    // Подключение сквозного поиска
     connect(m_topSearchEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
         if (m_sidebarSearch) {
             m_sidebarSearch->setText(text);
@@ -538,7 +544,6 @@ void MainWindow::setupTopBar(QVBoxLayout* parent) {
     connect(m_toggleGpuBtn, &QPushButton::clicked, this, &MainWindow::onToggleGpu);
     lay->addWidget(m_toggleGpuBtn);
 
-    // Чип телеметрии в TopBar
     QFrame* userChip = new QFrame(topBar);
     userChip->setStyleSheet(QString("QFrame { background:%1; border:1px solid %2; border-radius:10px; }").arg(C_BG_CARD).arg(C_BORDER));
     QHBoxLayout* ucLay = new QHBoxLayout(userChip);
@@ -769,7 +774,6 @@ void MainWindow::setupVisualizerPage() {
     m_stackedWidget->addWidget(page);
 }
 
-// Вкладка Описаний и Теории Справочника
 void MainWindow::setupDescriptionPage() {
     QWidget* page = new QWidget(this);
     page->setStyleSheet(QString("background:%1;").arg(C_BG_ROOT));
@@ -867,7 +871,6 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
 
     lay->addWidget(sectionHeader("Алгоритмы сортировки", "📋"));
 
-    // Поле поиска плиток
     m_sidebarSearch = new QLineEdit(sidebar);
     m_sidebarSearch->setPlaceholderText("Фильтр сортировок...");
     m_sidebarSearch->setStyleSheet(QString(
@@ -876,7 +879,6 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     ).arg(C_BORDER).arg(C_TEXT1).arg(C_ACCENT));
     lay->addWidget(m_sidebarSearch);
 
-    // Скролл-контейнер для плиток
     QScrollArea* tileScroll = new QScrollArea(sidebar);
     tileScroll->setWidgetResizable(true);
     tileScroll->setFrameShape(QFrame::NoFrame);
@@ -899,7 +901,6 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     tileScroll->setWidget(tileContainer);
     lay->addWidget(tileScroll);
 
-    // Коннект фильтрации поиска в сайдбаре
     connect(m_sidebarSearch, &QLineEdit::textChanged, this, [this](const QString& text) {
         for (AlgTile* tile : m_tiles) {
             bool matches = tile->titleLabel->text().contains(text, Qt::CaseInsensitive) ||
@@ -929,37 +930,49 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     m_arraySizeSpin->setSingleStep(1000);
     cfgGrid->addWidget(m_arraySizeSpin, 0, 1);
 
-    cfgGrid->addWidget(cfgLabel("Распределение:"), 1, 0);
+    // Добавляем чекбокс режима масштабирования (Sweep)
+    m_sweepModeCheck = new QCheckBox("Режим Sweep (График Сложности)", sidebar);
+    m_sweepModeCheck->setStyleSheet(QString("QCheckBox { color:%1; font-size:11px; font-weight:600; }").arg(C_TEXT2));
+    cfgGrid->addWidget(m_sweepModeCheck, 1, 0, 1, 2);
+
+    connect(m_sweepModeCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        m_arraySizeSpin->setDisabled(checked);
+    });
+
+    cfgGrid->addWidget(cfgLabel("Распределение:"), 2, 0);
     m_distCombo = new QComboBox(sidebar);
     m_distCombo->addItem("Равномерное",      static_cast<int>(Benchmark::Distribution::Uniform));
     m_distCombo->addItem("Нормальное (Гаусс)", static_cast<int>(Benchmark::Distribution::Normal));
     m_distCombo->addItem("Обратное",         static_cast<int>(Benchmark::Distribution::ReverseSorted));
     m_distCombo->addItem("Почти упорядоч.",  static_cast<int>(Benchmark::Distribution::AlmostSorted));
     m_distCombo->addItem("Все одинаковы",    static_cast<int>(Benchmark::Distribution::AllEqual));
-    cfgGrid->addWidget(m_distCombo, 1, 1);
+    m_distCombo->addItem("Синусоидальное",     static_cast<int>(Benchmark::Distribution::Sinusoidal));
+    m_distCombo->addItem("Ступенчатое (Блоки)", static_cast<int>(Benchmark::Distribution::Stepwise));
+    cfgGrid->addWidget(m_distCombo, 2, 1);
 
-    cfgGrid->addWidget(cfgLabel("Тип данных:"), 2, 0);
+    cfgGrid->addWidget(cfgLabel("Тип данных:"), 3, 0);
     m_dataTypeCombo = new QComboBox(sidebar);
     m_dataTypeCombo->addItem("float (32-bit)");
     m_dataTypeCombo->addItem("double (64-bit)");
-    cfgGrid->addWidget(m_dataTypeCombo, 2, 1);
+    cfgGrid->addWidget(m_dataTypeCombo, 3, 1);
 
-    cfgGrid->addWidget(cfgLabel("Повторов:"), 3, 0);
+    cfgGrid->addWidget(cfgLabel("Повторов:"), 4, 0);
     m_runsSpin = new QSpinBox(sidebar);
     m_runsSpin->setRange(1, 20);
     m_runsSpin->setValue(5);
-    cfgGrid->addWidget(m_runsSpin, 3, 1);
+    cfgGrid->addWidget(m_runsSpin, 4, 1);
 
     lay->addLayout(cfgGrid);
     lay->addWidget(hLine(sidebar));
 
-    // Информационный блок GPU
+    // Информационный блок GPU с телеметрией VRAM
     QFrame* gpuChip = new QFrame(sidebar);
     gpuChip->setStyleSheet("QFrame { background:#0f1f18; border:1px solid #1a4030; border-radius:10px; }");
-    QHBoxLayout* gpuLay = new QHBoxLayout(gpuChip);
-    gpuLay->setContentsMargins(10, 8, 10, 8);
-    gpuLay->setSpacing(8);
+    QVBoxLayout* gpuVLay = new QVBoxLayout(gpuChip);
+    gpuVLay->setContentsMargins(10, 8, 10, 8);
+    gpuVLay->setSpacing(6);
 
+    QHBoxLayout* gpuTopRow = new QHBoxLayout();
     m_gpuLedIndicator = new QWidget(gpuChip);
     m_gpuLedIndicator->setFixedSize(8, 8);
     m_gpuLedIndicator->setStyleSheet(QString("background:%1; border-radius:4px;").arg(C_SUCCESS));
@@ -969,9 +982,22 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     m_sidebarGpuLabel = new QLabel("Поиск GPU...", gpuChip);
     m_sidebarGpuLabel->setStyleSheet(QString("color:%1; font-size:10px;").arg(C_SUCCESS));
 
-    gpuLay->addWidget(m_gpuLedIndicator);
-    gpuLay->addWidget(gpuLbl);
-    gpuLay->addWidget(m_sidebarGpuLabel, 1);
+    gpuTopRow->addWidget(m_gpuLedIndicator);
+    gpuTopRow->addWidget(gpuLbl);
+    gpuTopRow->addWidget(m_sidebarGpuLabel, 1);
+    gpuVLay->addLayout(gpuTopRow);
+
+    m_gpuVramBar = new QProgressBar(gpuChip);
+    m_gpuVramBar->setFixedHeight(6);
+    m_gpuVramBar->setStyleSheet(R"(
+        QProgressBar { background: #08100c; border: none; border-radius: 3px; text-align: center; color: transparent; }
+        QProgressBar::chunk { background: #10b981; border-radius: 3px; }
+    )");
+    m_gpuVramLabel = new QLabel("VRAM: Инициализация...", gpuChip);
+    m_gpuVramLabel->setStyleSheet(QString("color: %1; font-size: 10px;").arg(C_TEXT3));
+
+    gpuVLay->addWidget(m_gpuVramBar);
+    gpuVLay->addWidget(m_gpuVramLabel);
     lay->addWidget(gpuChip);
 
     lay->addWidget(sectionHeader("Экспорт", "📤"));
@@ -1082,7 +1108,6 @@ void MainWindow::setupCharts() {
 }
 
 void MainWindow::loadAvailableAlgorithms() {
-    // Дефолтный чекнутый выбор некоторых плиток
     for (AlgTile* tile : m_tiles) {
         if (tile->algId == "CPU_std::sort" || tile->algId == "CPU_QuickSort" ||
             tile->algId == "GPU_Bitonic" || tile->algId == "GPU_Radix") {
@@ -1145,7 +1170,6 @@ void MainWindow::switchToDescriptionPage() {
     m_navDescBtn->setChecked(true);
 }
 
-// Получить активные плитки
 std::vector<QString> MainWindow::getSelectedAlgorithms() {
     std::vector<QString> list;
     for (AlgTile* tile : m_tiles) {
@@ -1176,6 +1200,11 @@ void MainWindow::onStartBenchmark() {
     cfg.dist             = static_cast<Benchmark::Distribution>(m_distCombo->currentData().toInt());
     cfg.isDoublePrecision = m_dataTypeCombo->currentIndex() > 0;
     cfg.gpuConnected     = m_gpuConnected;
+
+    cfg.isSweepMode      = m_sweepModeCheck->isChecked();
+    if (cfg.isSweepMode) {
+        cfg.sweepSizes = {100, 500, 1000, 5000, 10000, 25000};
+    }
 
     for (const auto& algId : selected) {
         cfg.selectedAlgorithms.push_back(algId);
@@ -1238,34 +1267,126 @@ void MainWindow::onBenchmarkFinished() {
 }
 
 void MainWindow::updateCharts() {
-    m_barSeries->clear();
+    m_chart->removeAllSeries();
 
-    QBarSet* setAvg = new QBarSet("Среднее (ms)");
-    setAvg->setColor(QColor(C_ACCENT));
-    setAvg->setBorderColor(Qt::transparent);
+    if (!m_sweepModeCheck->isChecked()) {
+        // ==================== РЕЖИМ СТОЛБЧАТОЙ ДИАГРАММЫ (ОДИН N) ====================
+        m_barSeries = new QBarSeries(this);
 
-    QBarSet* setMedian = new QBarSet("Медиана (ms)");
-    setMedian->setColor(QColor(C_BLUE));
-    setMedian->setBorderColor(Qt::transparent);
+        QBarSet* setAvg = new QBarSet("Среднее (ms)");
+        setAvg->setColor(QColor(C_ACCENT));
+        setAvg->setBorderColor(Qt::transparent);
 
-    QStringList cats;
-    double maxVal = 0.001;
+        QBarSet* setMedian = new QBarSet("Медиана (ms)");
+        setMedian->setColor(QColor(C_BLUE));
+        setMedian->setBorderColor(Qt::transparent);
 
-    for (const auto& r : m_accumulatedResults) {
-        if (!r.success) continue;
-        QString lbl = r.algorithmName;
-        lbl.remove("CPU_").remove("GPU_").replace("Sort","").replace("sort","");
-        cats << lbl;
-        *setAvg    << r.avgTimeMs;
-        *setMedian << r.medianTimeMs;
-        maxVal = std::max({maxVal, r.avgTimeMs, r.medianTimeMs});
+        QStringList cats;
+        double maxVal = 0.001;
+
+        for (const auto& r : m_accumulatedResults) {
+            if (!r.success) continue;
+            QString lbl = r.algorithmName;
+            lbl.remove("CPU_").remove("GPU_").replace("Sort","").replace("sort","");
+            cats << lbl;
+            *setAvg    << r.avgTimeMs;
+            *setMedian << r.medianTimeMs;
+            maxVal = std::max({maxVal, r.avgTimeMs, r.medianTimeMs});
+        }
+
+        m_barSeries->append(setAvg);
+        m_barSeries->append(setMedian);
+        m_chart->addSeries(m_barSeries);
+
+        m_chart->removeAxis(m_axisX);
+        m_chart->removeAxis(m_axisY);
+
+        QBarCategoryAxis* barAxisX = new QBarCategoryAxis(this);
+        barAxisX->setLabelsBrush(QBrush(QColor(C_TEXT2)));
+        barAxisX->setLinePen(QPen(QColor(C_BORDER)));
+        barAxisX->setGridLinePen(QPen(Qt::transparent));
+        m_chart->addAxis(barAxisX, Qt::AlignBottom);
+        m_barSeries->attachAxis(barAxisX);
+
+        m_axisY = new QValueAxis(this);
+        m_axisY->setLabelsBrush(QBrush(QColor(C_TEXT2)));
+        m_axisY->setLabelFormat("%.2f");
+        m_axisY->setTitleText("Время (мс)");
+        m_axisY->setTitleBrush(QBrush(QColor(C_TEXT3)));
+        m_axisY->setLinePen(QPen(Qt::transparent));
+        m_axisY->setGridLinePen(QPen(QColor(C_BORDER), 1, Qt::DashLine));
+        m_chart->addAxis(m_axisY, Qt::AlignLeft);
+        m_barSeries->attachAxis(m_axisY);
+
+        barAxisX->append(cats);
+        m_axisY->setRange(0.0, maxVal * 1.20);
+        
+        m_axisX = barAxisX;
+    } 
+    else {
+        // ==================== РЕЖИМ ГРАФИКА СЛОЖНОСТИ (НЕСКОЛЬКО N) ====================
+        std::map<QString, std::vector<std::pair<double, double>>> algLines;
+        double maxVal = 0.001;
+        double maxSize = 100.0;
+
+        for (const auto& r : m_accumulatedResults) {
+            if (!r.success) continue;
+            algLines[r.algorithmName].push_back({static_cast<double>(r.arraySize), r.avgTimeMs});
+            maxVal = std::max(maxVal, r.avgTimeMs);
+            maxSize = std::max(maxSize, static_cast<double>(r.arraySize));
+        }
+
+        m_chart->removeAxis(m_axisX);
+        m_chart->removeAxis(m_axisY);
+
+        QValueAxis* axisValX = new QValueAxis(this);
+        axisValX->setLabelsBrush(QBrush(QColor(C_TEXT2)));
+        axisValX->setTitleText("Размер входного массива (N)");
+        axisValX->setTitleBrush(QBrush(QColor(C_TEXT3)));
+        axisValX->setLinePen(QPen(QColor(C_BORDER)));
+        axisValX->setGridLinePen(QPen(QColor(C_BORDER), 1, Qt::DashLine));
+        m_chart->addAxis(axisValX, Qt::AlignBottom);
+
+        m_axisY = new QValueAxis(this);
+        m_axisY->setLabelsBrush(QBrush(QColor(C_TEXT2)));
+        m_axisY->setLabelFormat("%.2f");
+        m_axisY->setTitleText("Среднее время выполнения (мс)");
+        m_axisY->setTitleBrush(QBrush(QColor(C_TEXT3)));
+        m_axisY->setLinePen(QPen(Qt::transparent));
+        m_axisY->setGridLinePen(QPen(QColor(C_BORDER), 1, Qt::DashLine));
+        m_chart->addAxis(m_axisY, Qt::AlignLeft);
+
+        QList<QColor> colors = {
+            QColor("#6366f1"), QColor("#3b82f6"), QColor("#10b981"), QColor("#f59e0b"),
+            QColor("#ef4444"), QColor("#84cc16"), QColor("#06b6d4"), QColor("#a855f7")
+        };
+        int colorIdx = 0;
+
+        for (auto& [algName, points] : algLines) {
+            std::sort(points.begin(), points.end(), [](auto& a, auto& b) { return a.first < b.first; });
+
+            QLineSeries* series = new QLineSeries(this);
+            series->setName(algName);
+            
+            QColor col = colors[colorIdx % colors.size()];
+            series->setColor(col);
+            series->setPointsVisible(true);
+            colorIdx++;
+
+            for (const auto& p : points) {
+                series->append(p.first, p.second);
+            }
+
+            m_chart->addSeries(series);
+            series->attachAxis(axisValX);
+            series->attachAxis(m_axisY);
+        }
+
+        axisValX->setRange(0.0, maxSize);
+        m_axisY->setRange(0.0, maxVal * 1.20);
+        
+        m_axisX = axisValX;
     }
-
-    m_barSeries->append(setAvg);
-    m_barSeries->append(setMedian);
-    m_axisX->clear();
-    m_axisX->append(cats);
-    m_axisY->setRange(0.0, maxVal * 1.20);
 }
 
 void MainWindow::updateMetricCards() {
@@ -1415,9 +1536,33 @@ void MainWindow::updateSystemTelemetry() {
     if (hasGpu) {
         m_gpuLedIndicator->setStyleSheet("background: #10b981; border-radius: 4px;");
         m_sidebarGpuLabel->setStyleSheet("color: #10b981; font-size: 10px; background: transparent;");
+
+        size_t freeMem = 0;
+        size_t totalMem = 0;
+        cudaError_t err = cudaMemGetInfo(&freeMem, &totalMem);
+        
+        if (err == cudaSuccess && totalMem > 0) {
+            size_t usedMem = totalMem - freeMem;
+            double usedMB = usedMem / (1024.0 * 1024.0);
+            double totalMB = totalMem / (1024.0 * 1024.0);
+            int percent = static_cast<int>((usedMem * 100) / totalMem);
+
+            m_gpuVramBar->setValue(percent);
+            m_gpuVramLabel->setText(QString("VRAM: %1 MB / %2 MB (%3%)")
+                .arg(QString::number(usedMB, 'f', 0))
+                .arg(QString::number(totalMB, 'f', 0))
+                .arg(percent));
+            m_gpuVramBar->setVisible(true);
+            m_gpuVramLabel->setVisible(true);
+        } else {
+            m_gpuVramBar->setVisible(false);
+            m_gpuVramLabel->setText("VRAM: Ошибка чтения API");
+        }
     } else {
         m_gpuLedIndicator->setStyleSheet("background: #ef4444; border-radius: 4px;");
         m_sidebarGpuLabel->setStyleSheet("color: #ef4444; font-size: 10px; background: transparent;");
+        m_gpuVramBar->setVisible(false);
+        m_gpuVramLabel->setText("VRAM: Недоступно");
     }
 }
 
@@ -1433,6 +1578,8 @@ void MainWindow::onToggleGpu() {
         m_topGpuLabel->setText("GPU SIMULATION OFFLINE");
         m_topGpuLabel->setStyleSheet(QString("color:%1; font-size:10px; background:transparent;").arg(C_DANGER));
         m_toggleGpuBtn->setToolTip("GPU отключен вручную (кликните для подключения)");
+        m_gpuVramBar->setVisible(false);
+        m_gpuVramLabel->setText("VRAM: Отключено (SIM)");
     }
 }
 

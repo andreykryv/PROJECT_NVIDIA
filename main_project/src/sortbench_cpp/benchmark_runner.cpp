@@ -1,6 +1,6 @@
 /**
  * @file benchmark_runner.cpp
- * @brief Реализация потока бенчмарка.
+ * @brief Реализация потока бенчмарка с поддержкой режима Sweep и новых распределений.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,6 +12,7 @@
 #include <chrono>
 #include <numeric>
 #include <algorithm>
+#include <cmath>
 
 BenchmarkRunner::BenchmarkRunner(QObject* parent)
     : QThread(parent), m_stopRequested(false) {}
@@ -61,6 +62,19 @@ std::vector<double> BenchmarkRunner::generateData(int size, Benchmark::Distribut
         double constantValue = dis(gen);
         std::fill(data.begin(), data.end(), constantValue);
     }
+    else if (dist == Benchmark::Distribution::Sinusoidal) {
+        for (int i = 0; i < size; ++i) {
+            data[i] = std::sin(i * 0.05) * 5000.0;
+        }
+    }
+    else if (dist == Benchmark::Distribution::Stepwise) {
+        int stepsCount = std::max(2, size / 20);
+        int stepSize = size / stepsCount;
+        if (stepSize == 0) stepSize = 1;
+        for (int i = 0; i < size; ++i) {
+            data[i] = static_cast<double>((i / stepSize) * 500);
+        }
+    }
     return data;
 }
 
@@ -80,189 +94,205 @@ void BenchmarkRunner::run() {
         return;
     }
 
+    // Определяем сетку размеров
+    std::vector<int> targetSizes;
+    if (cfg.isSweepMode && !cfg.sweepSizes.empty()) {
+        targetSizes = cfg.sweepSizes;
+    } else {
+        targetSizes = { cfg.arraySize };
+    }
+
+    int totalSteps = totalAlgorithms * targetSizes.size();
+    int currentStep = 0;
+
     for (int algIdx = 0; algIdx < totalAlgorithms; ++algIdx) {
         if (m_stopRequested.load()) break;
 
         QString algName = cfg.selectedAlgorithms[algIdx];
         bool isGPU = algName.startsWith("GPU_");
 
-        std::vector<double> runTimesMs;
-        std::vector<double> uploadTimesMs;
-        std::vector<double> downloadTimesMs;
-        std::vector<double> kernelTimesMs;
-
-        bool success = true;
-        QString errorMsg = "";
-
-        for (int run = 0; run < cfg.runsCount; ++run) {
+        for (int currentSize : targetSizes) {
             if (m_stopRequested.load()) break;
 
-            std::vector<double> data = generateData(cfg.arraySize, cfg.dist);
+            std::vector<double> runTimesMs;
+            std::vector<double> uploadTimesMs;
+            std::vector<double> downloadTimesMs;
+            std::vector<double> kernelTimesMs;
 
-            if (isGPU) {
-                if (!cfg.gpuConnected) {
-                    success = false;
-                    errorMsg = "CUDA Error 702: Link disconnected (PCIe bus link down / GPU Bus simulator off)";
-                    break;
+            bool success = true;
+            QString errorMsg = "";
+
+            for (int run = 0; run < cfg.runsCount; ++run) {
+                if (m_stopRequested.load()) break;
+
+                std::vector<double> data = generateData(currentSize, cfg.dist);
+
+                if (isGPU) {
+                    if (!cfg.gpuConnected) {
+                        success = false;
+                        errorMsg = "CUDA Error 702: Link disconnected (PCIe bus link down / GPU Bus simulator off)";
+                        break;
+                    }
+                    GPU::GPUBenchmarkResult gRes;
+                    
+                    if (algName == "GPU_Bitonic") {
+                        gRes = GPU::runBitonicSort(data);
+                    } else if (algName == "GPU_Radix") {
+                        gRes = GPU::runRadixSort(data);
+                    } else if (algName == "GPU_OddEven") {
+                        gRes = GPU::runOddEvenSort(data);
+                    } else if (algName == "GPU_StdSort") {
+                        gRes = GPU::runStdSort(data);
+                    } else if (algName == "GPU_QuickSort") {
+                        gRes = GPU::runQuickSort(data);
+                    } else if (algName == "GPU_MergeSort") {
+                        gRes = GPU::runMergeSort(data);
+                    } else if (algName == "GPU_HeapSort") {
+                        gRes = GPU::runHeapSort(data);
+                    } else if (algName == "GPU_TimSort") {
+                        gRes = GPU::runTimSort(data);
+                    } else if (algName == "GPU_BubbleSort") {
+                        gRes = GPU::runBubbleSort(data);
+                    } else if (algName == "GPU_SelectionSort") {
+                        gRes = GPU::runSelectionSort(data);
+                    } else if (algName == "GPU_InsertionSort") {
+                        gRes = GPU::runInsertionSort(data);
+                    } else if (algName == "GPU_ShellSort") {
+                        gRes = GPU::runShellSort(data);
+                    } else if (algName == "GPU_CocktailSort") {
+                        gRes = GPU::runCocktailSort(data);
+                    } else if (algName == "GPU_GnomeSort") {
+                        gRes = GPU::runGnomeSort(data);
+                    } else if (algName == "GPU_CombSort") {
+                        gRes = GPU::runCombSort(data);
+                    } else if (algName == "GPU_RadixSortLSD") {
+                        gRes = GPU::runRadixSortLSD(data);
+                    } else if (algName == "GPU_CountingSort") {
+                        gRes = GPU::runCountingSort(data);
+                    } else if (algName == "GPU_BucketSort") {
+                        gRes = GPU::runBucketSort(data);
+                    } else if (algName == "GPU_PancakeSort") {
+                        gRes = GPU::runPancakeSort(data);
+                    } else if (algName == "GPU_BogoSort") {
+                        gRes = GPU::runBogoSort(data);
+                    } else if (algName == "GPU_StoogeSort") {
+                        gRes = GPU::runStoogeSort(data);
+                    } else if (algName == "GPU_OddEvenSort") {
+                        gRes = GPU::runOddEvenSortCPU(data);
+                    } else if (algName == "GPU_CycleSort") {
+                        gRes = GPU::runCycleSort(data);
+                    } else {
+                        success = false;
+                        errorMsg = "Неизвестный GPU-алгоритм: " + algName;
+                        break;
+                    }
+
+                    if (!gRes.success) {
+                        success = false;
+                        errorMsg = QString::fromStdString(gRes.errorMessage);
+                        break;
+                    }
+                    runTimesMs.push_back(gRes.totalTimeMs);
+                    uploadTimesMs.push_back(gRes.uploadTimeMs);
+                    downloadTimesMs.push_back(gRes.downloadTimeMs);
+                    kernelTimesMs.push_back(gRes.kernelTimeMs);
+                } 
+                else {
+                    std::atomic<bool> localStop(false);
+                    CPU::SortContext ctx;
+                    ctx.stopRequested = &localStop;
+                    ctx.stepCallback = nullptr; 
+
+                    auto start = std::chrono::high_resolution_clock::now();
+
+                    if (algName == "CPU_std::sort") {
+                        CPU::stdSort(data, ctx);
+                    } else if (algName == "CPU_QuickSort") {
+                        CPU::quickSort(data, ctx);
+                    } else if (algName == "CPU_MergeSort") {
+                        CPU::mergeSort(data, ctx);
+                    } else if (algName == "CPU_HeapSort") {
+                        CPU::heapSort(data, ctx);
+                    } else if (algName == "CPU_TimSort") {
+                        CPU::timSort(data, ctx);
+                    } else if (algName == "CPU_BubbleSort") {
+                        CPU::bubbleSort(data, ctx);
+                    } else if (algName == "CPU_SelectionSort") {
+                        CPU::selectionSort(data, ctx);
+                    } else if (algName == "CPU_InsertionSort") {
+                        CPU::insertionSort(data, ctx);
+                    } else if (algName == "CPU_ShellSort") {
+                        CPU::shellSort(data, ctx);
+                    } else if (algName == "CPU_CocktailSort") {
+                        CPU::cocktailSort(data, ctx);
+                    } else if (algName == "CPU_GnomeSort") {
+                        CPU::gnomeSort(data, ctx);
+                    } else if (algName == "CPU_CombSort") {
+                        CPU::combSort(data, ctx);
+                    } else if (algName == "CPU_RadixSortLSD") {
+                        CPU::radixSortLSD(data, ctx);
+                    } else if (algName == "CPU_CountingSort") {
+                        CPU::countingSort(data, ctx);
+                    } else if (algName == "CPU_BucketSort") {
+                        CPU::bucketSort(data, ctx);
+                    } else if (algName == "CPU_PancakeSort") {
+                        CPU::pancakeSort(data, ctx);
+                    } else if (algName == "CPU_BogoSort") {
+                        CPU::bogoSort(data, ctx);
+                    } else if (algName == "CPU_StoogeSort") {
+                        CPU::stoogeSort(data, ctx);
+                    } else if (algName == "CPU_OddEvenSort") {
+                        CPU::oddEvenSort(data, ctx);
+                    } else if (algName == "CPU_CycleSort") {
+                        CPU::cycleSort(data, ctx);
+                    }
+
+                    auto end = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double, std::milli> diff = end - start;
+                    runTimesMs.push_back(diff.count());
                 }
-                GPU::GPUBenchmarkResult gRes;
-                // Все GPU алгоритмы (20 штук)
-                if (algName == "GPU_Bitonic") {
-                    gRes = GPU::runBitonicSort(data);
-                } else if (algName == "GPU_Radix") {
-                    gRes = GPU::runRadixSort(data);
-                } else if (algName == "GPU_OddEven") {
-                    gRes = GPU::runOddEvenSort(data);
-                } else if (algName == "GPU_StdSort") {
-                    gRes = GPU::runStdSort(data);
-                } else if (algName == "GPU_QuickSort") {
-                    gRes = GPU::runQuickSort(data);
-                } else if (algName == "GPU_MergeSort") {
-                    gRes = GPU::runMergeSort(data);
-                } else if (algName == "GPU_HeapSort") {
-                    gRes = GPU::runHeapSort(data);
-                } else if (algName == "GPU_TimSort") {
-                    gRes = GPU::runTimSort(data);
-                } else if (algName == "GPU_BubbleSort") {
-                    gRes = GPU::runBubbleSort(data);
-                } else if (algName == "GPU_SelectionSort") {
-                    gRes = GPU::runSelectionSort(data);
-                } else if (algName == "GPU_InsertionSort") {
-                    gRes = GPU::runInsertionSort(data);
-                } else if (algName == "GPU_ShellSort") {
-                    gRes = GPU::runShellSort(data);
-                } else if (algName == "GPU_CocktailSort") {
-                    gRes = GPU::runCocktailSort(data);
-                } else if (algName == "GPU_GnomeSort") {
-                    gRes = GPU::runGnomeSort(data);
-                } else if (algName == "GPU_CombSort") {
-                    gRes = GPU::runCombSort(data);
-                } else if (algName == "GPU_RadixSortLSD") {
-                    gRes = GPU::runRadixSortLSD(data);
-                } else if (algName == "GPU_CountingSort") {
-                    gRes = GPU::runCountingSort(data);
-                } else if (algName == "GPU_BucketSort") {
-                    gRes = GPU::runBucketSort(data);
-                } else if (algName == "GPU_PancakeSort") {
-                    gRes = GPU::runPancakeSort(data);
-                } else if (algName == "GPU_BogoSort") {
-                    gRes = GPU::runBogoSort(data);
-                } else if (algName == "GPU_StoogeSort") {
-                    gRes = GPU::runStoogeSort(data);
-                } else if (algName == "GPU_OddEvenSort") {
-                    gRes = GPU::runOddEvenSortCPU(data);
-                } else if (algName == "GPU_CycleSort") {
-                    gRes = GPU::runCycleSort(data);
-                } else {
-                    success = false;
-                    errorMsg = "Неизвестный GPU-алгоритм: " + algName;
-                    break;
-                }
-
-                if (!gRes.success) {
-                    success = false;
-                    errorMsg = QString::fromStdString(gRes.errorMessage);
-                    break;
-                }
-                runTimesMs.push_back(gRes.totalTimeMs);
-                uploadTimesMs.push_back(gRes.uploadTimeMs);
-                downloadTimesMs.push_back(gRes.downloadTimeMs);
-                kernelTimesMs.push_back(gRes.kernelTimeMs);
-            } 
-            else {
-                std::atomic<bool> localStop(false);
-                CPU::SortContext ctx;
-                ctx.stopRequested = &localStop;
-                ctx.stepCallback = nullptr; 
-
-                auto start = std::chrono::high_resolution_clock::now();
-
-                if (algName == "CPU_std::sort") {
-                    CPU::stdSort(data, ctx);
-                } else if (algName == "CPU_QuickSort") {
-                    CPU::quickSort(data, ctx);
-                } else if (algName == "CPU_MergeSort") {
-                    CPU::mergeSort(data, ctx);
-                } else if (algName == "CPU_HeapSort") {
-                    CPU::heapSort(data, ctx);
-                } else if (algName == "CPU_TimSort") {
-                    CPU::timSort(data, ctx);
-                } else if (algName == "CPU_BubbleSort") {
-                    CPU::bubbleSort(data, ctx);
-                } else if (algName == "CPU_SelectionSort") {
-                    CPU::selectionSort(data, ctx);
-                } else if (algName == "CPU_InsertionSort") {
-                    CPU::insertionSort(data, ctx);
-                } else if (algName == "CPU_ShellSort") {
-                    CPU::shellSort(data, ctx);
-                } else if (algName == "CPU_CocktailSort") {
-                    CPU::cocktailSort(data, ctx);
-                } else if (algName == "CPU_GnomeSort") {
-                    CPU::gnomeSort(data, ctx);
-                } else if (algName == "CPU_CombSort") {
-                    CPU::combSort(data, ctx);
-                } else if (algName == "CPU_RadixSortLSD") {
-                    CPU::radixSortLSD(data, ctx);
-                } else if (algName == "CPU_CountingSort") {
-                    CPU::countingSort(data, ctx);
-                } else if (algName == "CPU_BucketSort") {
-                    CPU::bucketSort(data, ctx);
-                } else if (algName == "CPU_PancakeSort") {
-                    CPU::pancakeSort(data, ctx);
-                } else if (algName == "CPU_BogoSort") {
-                    CPU::bogoSort(data, ctx);
-                } else if (algName == "CPU_StoogeSort") {
-                    CPU::stoogeSort(data, ctx);
-                } else if (algName == "CPU_OddEvenSort") {
-                    CPU::oddEvenSort(data, ctx);
-                } else if (algName == "CPU_CycleSort") {
-                    CPU::cycleSort(data, ctx);
-                }
-
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double, std::milli> diff = end - start;
-                runTimesMs.push_back(diff.count());
             }
-        }
 
-        if (m_stopRequested.load()) break;
+            if (m_stopRequested.load()) break;
 
-        Benchmark::StatResults stats;
-        stats.algorithmName = algName;
-        stats.isGPU = isGPU;
-        stats.arraySize = cfg.arraySize;
-        stats.success = success;
-        stats.errorMsg = errorMsg;
+            Benchmark::StatResults stats;
+            stats.algorithmName = algName;
+            stats.isGPU = isGPU;
+            stats.arraySize = currentSize;
+            stats.success = success;
+            stats.errorMsg = errorMsg;
 
-        if (success && !runTimesMs.empty()) {
-            auto [minIt, maxIt] = std::minmax_element(runTimesMs.begin(), runTimesMs.end());
-            stats.minTimeMs = *minIt;
-            stats.maxTimeMs = *maxIt;
-            double sum = std::accumulate(runTimesMs.begin(), runTimesMs.end(), 0.0);
-            stats.avgTimeMs = sum / runTimesMs.size();
-            std::vector<double> sortedTimes = runTimesMs;
-            std::sort(sortedTimes.begin(), sortedTimes.end());
-            int mid = sortedTimes.size() / 2;
-            stats.medianTimeMs = (sortedTimes.size() % 2 != 0) ? sortedTimes[mid] : (sortedTimes[mid-1] + sortedTimes[mid]) / 2.0;
-            double accum = 0.0;
-            for (double t : runTimesMs) accum += (t - stats.avgTimeMs) * (t - stats.avgTimeMs);
-            stats.varianceMs = (runTimesMs.size() > 1) ? accum / (runTimesMs.size() - 1) : 0.0;
+            if (success && !runTimesMs.empty()) {
+                auto [minIt, maxIt] = std::minmax_element(runTimesMs.begin(), runTimesMs.end());
+                stats.minTimeMs = *minIt;
+                stats.maxTimeMs = *maxIt;
+                double sum = std::accumulate(runTimesMs.begin(), runTimesMs.end(), 0.0);
+                stats.avgTimeMs = sum / runTimesMs.size();
+                std::vector<double> sortedTimes = runTimesMs;
+                std::sort(sortedTimes.begin(), sortedTimes.end());
+                int mid = sortedTimes.size() / 2;
+                stats.medianTimeMs = (sortedTimes.size() % 2 != 0) ? sortedTimes[mid] : (sortedTimes[mid-1] + sortedTimes[mid]) / 2.0;
+                double accum = 0.0;
+                for (double t : runTimesMs) accum += (t - stats.avgTimeMs) * (t - stats.avgTimeMs);
+                stats.varianceMs = (runTimesMs.size() > 1) ? accum / (runTimesMs.size() - 1) : 0.0;
 
-            if (isGPU) {
-                stats.avgUploadTimeMs = std::accumulate(uploadTimesMs.begin(), uploadTimesMs.end(), 0.0) / uploadTimesMs.size();
-                stats.avgDownloadTimeMs = std::accumulate(downloadTimesMs.begin(), downloadTimesMs.end(), 0.0) / downloadTimesMs.size();
-                stats.avgKernelTimeMs = std::accumulate(kernelTimesMs.begin(), kernelTimesMs.end(), 0.0) / kernelTimesMs.size();
+                if (isGPU) {
+                    stats.avgUploadTimeMs = std::accumulate(uploadTimesMs.begin(), uploadTimesMs.end(), 0.0) / uploadTimesMs.size();
+                    stats.avgDownloadTimeMs = std::accumulate(downloadTimesMs.begin(), downloadTimesMs.end(), 0.0) / downloadTimesMs.size();
+                    stats.avgKernelTimeMs = std::accumulate(kernelTimesMs.begin(), kernelTimesMs.end(), 0.0) / kernelTimesMs.size();
+                } else {
+                    stats.avgUploadTimeMs = stats.avgDownloadTimeMs = stats.avgKernelTimeMs = 0;
+                }
             } else {
+                stats.minTimeMs = stats.maxTimeMs = stats.avgTimeMs = stats.medianTimeMs = stats.varianceMs = 0;
                 stats.avgUploadTimeMs = stats.avgDownloadTimeMs = stats.avgKernelTimeMs = 0;
             }
-        } else {
-            stats.minTimeMs = stats.maxTimeMs = stats.avgTimeMs = stats.medianTimeMs = stats.varianceMs = 0;
-            stats.avgUploadTimeMs = stats.avgDownloadTimeMs = stats.avgKernelTimeMs = 0;
-        }
 
-        emit algorithmCompleted(stats);
-        int progress = static_cast<int>(static_cast<double>(algIdx + 1) / totalAlgorithms * 100.0);
-        emit progressUpdated(progress);
+            emit algorithmCompleted(stats);
+            currentStep++;
+            int progress = static_cast<int>(static_cast<double>(currentStep) / totalSteps * 100.0);
+            emit progressUpdated(progress);
+        }
     }
 
     emit progressUpdated(100);

@@ -1,8 +1,6 @@
 /**
  * @file benchmark_runner.h
- * @brief Описание потокового класса-раннера бенчмарков.
- * Наследуется от QThread. Выполняет генерацию массивов и поочередный безопасный запуск
- * выбранных алгоритмов во вспомогательном потоке, собирая статистику.
+ * @brief Описание потокового класса-раннера бенчмарков с поддержкой режима Sweep.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -22,7 +20,9 @@ namespace Benchmark {
         Normal,             // Нормальное (Гауссово)
         ReverseSorted,      // Обратная сортировка
         AlmostSorted,       // Почти отсортировано
-        AllEqual            // Все элементы равны
+        AllEqual,           // Все элементы равны
+        Sinusoidal,         // Синусоидальное (периодическое)
+        Stepwise            // Ступенчатое (блочное)
     };
 
     /**
@@ -54,6 +54,10 @@ namespace Benchmark {
         int runsCount = 5;                       // Кол-во повторных запусков для усреднения
         bool isDoublePrecision = true;
         bool gpuConnected = true;
+        
+        // Настройки режима масштабирования (Sweep)
+        bool isSweepMode = false;
+        std::vector<int> sweepSizes = {100, 500, 1000, 5000, 10000, 25000};
     };
 
 } // namespace Benchmark
