@@ -6,6 +6,7 @@
  */
 
 #include "mainwindow.h"
+#include "settings_dialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -28,6 +29,7 @@
 #include <QResizeEvent>
 #include <QtGlobal>
 #include <QSysInfo>
+#include <QSettings>
 #include <utility>
 #include "cpu_algorithms.h" 
 
@@ -302,7 +304,9 @@ MainWindow::MainWindow(QWidget *parent)
     // Инициализация периодического опроса телеметрии CUDA VRAM
     m_telemetryTimer = new QTimer(this);
     connect(m_telemetryTimer, &QTimer::timeout, this, &MainWindow::updateSystemTelemetry);
-    m_telemetryTimer->start(1000); 
+    
+    QSettings s;
+    m_telemetryTimer->start(s.value("telemetry/interval", 1000).toInt()); 
 
     updateSystemTelemetry();
 }
@@ -440,12 +444,14 @@ void MainWindow::setupLeftSidebar(QHBoxLayout* root) {
     lay->addWidget(hLine(sidebar));
     lay->addSpacing(8);
 
-    QToolButton* settBtn = new QToolButton(sidebar);
-    settBtn->setText("⚙️");
-    settBtn->setToolTip("Настройки");
-    settBtn->setFixedSize(48, 48);
-    settBtn->setStyleSheet(QString("QToolButton { font-size:20px; border-radius:13px; border:none; background:transparent; color:%1; } QToolButton:hover { background:rgba(99,102,241,0.2); color:#a5b4fc; }").arg(C_TEXT3));
-    lay->addWidget(settBtn, 0, Qt::AlignHCenter);
+    m_settBtn = new QToolButton(sidebar);
+    m_settBtn->setText("⚙️");
+    m_settBtn->setToolTip("Настройки");
+    m_settBtn->setFixedSize(48, 48);
+    m_settBtn->setCursor(Qt::PointingHandCursor);
+    m_settBtn->setStyleSheet(QString("QToolButton { font-size:20px; border-radius:13px; border:none; background:transparent; color:%1; } QToolButton:hover { background:rgba(99,102,241,0.2); color:#a5b4fc; }").arg(C_TEXT3));
+    connect(m_settBtn, &QToolButton::clicked, this, &MainWindow::onOpenSettings);
+    lay->addWidget(m_settBtn, 0, Qt::AlignHCenter);
 
     root->addWidget(sidebar);
 }
@@ -930,7 +936,7 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     m_arraySizeSpin->setSingleStep(1000);
     cfgGrid->addWidget(m_arraySizeSpin, 0, 1);
 
-    // Добавляем чекбокс режима масштабирования (Sweep)
+    // Чекбокс режима масштабирования (Sweep)
     m_sweepModeCheck = new QCheckBox("Режим Sweep (График Сложности)", sidebar);
     m_sweepModeCheck->setStyleSheet(QString("QCheckBox { color:%1; font-size:11px; font-weight:600; }").arg(C_TEXT2));
     cfgGrid->addWidget(m_sweepModeCheck, 1, 0, 1, 2);
@@ -959,7 +965,9 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     cfgGrid->addWidget(cfgLabel("Повторов:"), 4, 0);
     m_runsSpin = new QSpinBox(sidebar);
     m_runsSpin->setRange(1, 20);
-    m_runsSpin->setValue(5);
+    
+    QSettings s;
+    m_runsSpin->setValue(s.value("benchmark/default_runs", 5).toInt());
     cfgGrid->addWidget(m_runsSpin, 4, 1);
 
     lay->addLayout(cfgGrid);
@@ -1203,7 +1211,19 @@ void MainWindow::onStartBenchmark() {
 
     cfg.isSweepMode      = m_sweepModeCheck->isChecked();
     if (cfg.isSweepMode) {
-        cfg.sweepSizes = {100, 500, 1000, 5000, 10000, 25000};
+        QSettings s;
+        QString sweepStr = s.value("benchmark/sweep_sizes", "100,500,1000,5000,10000,25000").toString();
+        cfg.sweepSizes.clear();
+        for (const QString& part : sweepStr.split(",")) {
+            bool ok;
+            int size = part.trimmed().toInt(&ok);
+            if (ok && size > 0) {
+                cfg.sweepSizes.push_back(size);
+            }
+        }
+        if (cfg.sweepSizes.empty()) {
+            cfg.sweepSizes = {100, 500, 1000, 5000, 10000, 25000};
+        }
     }
 
     for (const auto& algId : selected) {
@@ -1352,7 +1372,7 @@ void MainWindow::updateCharts() {
         m_axisY->setLabelFormat("%.2f");
         m_axisY->setTitleText("Среднее время выполнения (мс)");
         m_axisY->setTitleBrush(QBrush(QColor(C_TEXT3)));
-        m_axisY->setLinePen(QPen(Qt::transparent));
+        m_axisY->setLinePen(QPen(Qt::transparent)); // Исправлено: Обернуто в QPen
         m_axisY->setGridLinePen(QPen(QColor(C_BORDER), 1, Qt::DashLine));
         m_chart->addAxis(m_axisY, Qt::AlignLeft);
 
@@ -1583,6 +1603,19 @@ void MainWindow::onToggleGpu() {
     }
 }
 
+void MainWindow::onOpenSettings() {
+    SettingsDialog dlg(this);
+    if (dlg.exec() == QDialog::Accepted) {
+        // Применяем новый интервал телеметрии в реальном времени
+        QSettings s;
+        m_telemetryTimer->setInterval(s.value("telemetry/interval", 1000).toInt());
+        m_runsSpin->setValue(s.value("benchmark/default_runs", 5).toInt());
+
+        // Перерисовываем визуализатор с новой палитрой
+        onGenerateVisualArray();
+    }
+}
+
 void MainWindow::onExportCSV() {
     if (m_accumulatedResults.empty()) {
         QMessageBox::information(this, "Экспорт CSV", "Нет данных для экспорта. Запустите хотя бы один тест.");
@@ -1596,14 +1629,21 @@ void MainWindow::onExportCSV() {
         QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл для записи.");
         return;
     }
+
+    QSettings s;
+    QString sep = s.value("csv/separator", ";").toString();
+
     QTextStream out(&f);
-    out << "Algorithm;Device;N;Min_ms;Max_ms;Avg_ms;Median_ms;Variance_ms;Upload_ms;Kernel_ms;Download_ms;Status\n";
+    out << "Algorithm" << sep << "Device" << sep << "N" << sep << "Min_ms" << sep << "Max_ms" << sep 
+        << "Avg_ms" << sep << "Median_ms" << sep << "Variance_ms" << sep << "Upload_ms" << sep 
+        << "Kernel_ms" << sep << "Download_ms" << sep << "Status\n";
+
     for (const auto& r : m_accumulatedResults) {
-        out << r.algorithmName << ";" << (r.isGPU?"GPU":"CPU") << ";"
-            << r.arraySize << ";" << r.minTimeMs << ";" << r.maxTimeMs << ";"
-            << r.avgTimeMs << ";" << r.medianTimeMs << ";" << r.varianceMs << ";"
-            << r.avgUploadTimeMs << ";" << r.avgKernelTimeMs << ";" << r.avgDownloadTimeMs << ";"
-            << (r.success?"OK":"Error") << "\n";
+        out << r.algorithmName << sep << (r.isGPU ? "GPU" : "CPU") << sep
+            << r.arraySize << sep << r.minTimeMs << sep << r.maxTimeMs << sep
+            << r.avgTimeMs << sep << r.medianTimeMs << sep << r.varianceMs << sep
+            << r.avgUploadTimeMs << sep << r.avgKernelTimeMs << sep << r.avgDownloadTimeMs << sep
+            << (r.success ? "OK" : "Error") << "\n";
     }
     f.close();
     QMessageBox::information(this, "Экспорт CSV", "Результаты сохранены:\n" + fn);

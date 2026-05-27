@@ -96,6 +96,7 @@ private slots:
     void onExportPNG();
     void onGenerateVisualArray();
     void onToggleGpu();
+    void onOpenSettings(); // Слот для открытия настроек
 
     void switchToBenchmarkPage();
     void switchToVisualizerPage();
@@ -123,6 +124,7 @@ private:
     QToolButton* m_navVisualBtn  = nullptr;
     QToolButton* m_navDescBtn    = nullptr;
     QToolButton* m_navExportBtn  = nullptr;
+    QToolButton* m_settBtn       = nullptr; // Кнопка настроек
     QLabel*      m_pageTitle     = nullptr;
     QLabel*      m_pageSubtitle  = nullptr;
 
