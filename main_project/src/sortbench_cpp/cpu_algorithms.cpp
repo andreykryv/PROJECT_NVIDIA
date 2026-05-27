@@ -1,8 +1,6 @@
 /**
  * @file cpu_algorithms.cpp
  * @brief Реализация классических и гибридных алгоритмов сортировки на CPU.
- * Каждая функция проверяет индикатор принудительной остановки (stopRequested) 
- * и периодически вызывает интерактивный callback визуализации в процессе перестановок.
  * 
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,7 +11,6 @@
 #include <random>
 #include <vector>
 #include <cstring>
-#include <algorithm>
 
 namespace CPU {
 
@@ -334,7 +331,6 @@ namespace CPU {
         int n = arr.size();
         if (n <= 1) return;
 
-        // Поразрядная по байтам
         std::vector<double> output(n);
         for (int byteIdx = 0; byteIdx < 8; ++byteIdx) {
             CHECK_STOP();
@@ -362,10 +358,10 @@ namespace CPU {
             arr = output;
             FIRE_STEP(-1, -1, -1);
         }
-        // Финальный проход коррекции знака для double
-        // cpu_algorithms.cpp, строки 366–367
-std::stable_partition(arr.begin(), arr.end(), [](double x) { return x < 0; });
-std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](double x) { return x < 0; }));
+
+        // Финальный проход коррекции знака для double (Исправление логической ошибки разделения знака)
+        auto it = std::stable_partition(arr.begin(), arr.end(), [](double x) { return x < 0; });
+        std::reverse(arr.begin(), it);
         FIRE_STEP(-1, -1, -1);
     }
 
@@ -374,7 +370,6 @@ std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](doubl
         int n = arr.size();
         if (n <= 1) return;
 
-        // Нормируем значения double в диапазон для сортировки подсчетом
         auto [minIt, maxIt] = std::minmax_element(arr.begin(), arr.end());
         double minVal = *minIt;
         double maxVal = *maxIt;
@@ -382,7 +377,7 @@ std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](doubl
 
         if (range < 1e-9) return;
 
-        int K = 2000; // Число ведер/подсчетов
+        int K = 2000;
         std::vector<int> count(K, 0);
         std::vector<double> output(n);
 
@@ -478,7 +473,6 @@ std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](doubl
             return true;
         };
 
-        // Будем переставлять элементы, но не бесконечно, чтобы не вешать симулятор в GUI
         int iterations = 0;
         while (!isSorted(arr) && iterations < 2000) {
             CHECK_STOP();
@@ -518,7 +512,6 @@ std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](doubl
 
         while (!isSorted) {
             isSorted = true;
-            // Четная фаза
             for (int i = 1; i < n - 1; i += 2) {
                 CHECK_STOP();
                 if (arr[i] > arr[i + 1]) {
@@ -527,7 +520,6 @@ std::reverse(arr.begin(), std::stable_partition(arr.begin(), arr.end(), [](doubl
                     isSorted = false;
                 }
             }
-            // Нечетная фаза
             for (int i = 0; i < n - 1; i += 2) {
                 CHECK_STOP();
                 if (arr[i] > arr[i + 1]) {

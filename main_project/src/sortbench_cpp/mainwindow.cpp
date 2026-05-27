@@ -1,15 +1,7 @@
 /**
  * @file mainwindow.cpp
- * @brief SortBench — Teamify Dashboard Style UI.
- *
- * Трёхколоночный макет:
- *   [Left sidebar 64 px] | [Main content flex] | [Right sidebar 300 px]
- *
- * Main content:
- *   TopBar (64 px) → ViewToggle (40 px) → StackedWidget
- *     Page 0 — Benchmark Analytics (chart + metric cards + table)
- *     Page 1 — Interactive Visualiser
- *
+ * @brief Главное окно интерфейса SortBench.
+ * 
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -32,12 +24,24 @@
 #include <QPainter>
 #include <QResizeEvent>
 #include <QtGlobal>
-#include "cpu_algorithms.h"
+#include <QSysInfo>
 #include <utility>
+#include "cpu_algorithms.h" 
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Colour tokens (match Teamify screenshot)
-// ─────────────────────────────────────────────────────────────────────────────
+#ifdef Q_OS_WIN
+#include <QSettings>
+#endif
+#ifdef Q_OS_LINUX
+#include <QFile>
+#include <QTextStream>
+#endif
+#ifdef Q_OS_MAC
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
+#include <cuda_runtime.h>
+
 static const char* C_BG_ROOT    = "#0d0d1b";
 static const char* C_BG_SIDEBAR = "#11112b";
 static const char* C_BG_CARD    = "#191929";
@@ -53,9 +57,181 @@ static const char* C_SUCCESS    = "#10b981";
 static const char* C_WARNING    = "#f59e0b";
 static const char* C_DANGER     = "#ef4444";
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Helper: horizontal separator
-// ─────────────────────────────────────────────────────────────────────────────
+// Вспомогательные структуры алгоритмов сайдбара
+struct SidebarAlgInfo {
+    QString name;
+    QString desc;
+    QString id;
+    bool isGPU;
+};
+
+static const QList<SidebarAlgInfo> sidebarAlgs = {
+    {"std::sort", "Быстрая сортировка C++ STL (IntroSort)", "CPU_std::sort", false},
+    {"QuickSort", "Быстрая сортировка с разделением Хоара", "CPU_QuickSort", false},
+    {"MergeSort", "Стабильная сортировка слиянием блоков", "CPU_MergeSort", false},
+    {"HeapSort", "Эффективная пирамидальная сортировка", "CPU_HeapSort", false},
+    {"TimSort", "Гибридный алгоритм Timsort (вставки + слияние)", "CPU_TimSort", false},
+    {"BubbleSort", "Классический пузырьковый обмен соседних пар", "CPU_BubbleSort", false},
+    {"SelectionSort", "Сортировка выбором минимального значения", "CPU_SelectionSort", false},
+    {"InsertionSort", "Сортировка последовательными вставками", "CPU_InsertionSort", false},
+    {"ShellSort", "Сортировка Шелла с уменьшающимся шагом", "CPU_ShellSort", false},
+    {"CocktailSort", "Шейкерная двунаправленная сортировка", "CPU_CocktailSort", false},
+    {"GnomeSort", "Оригинальная гномья сортировка обменами", "CPU_GnomeSort", false},
+    {"CombSort", "Улучшенная пузырьковая сортировка расчёской", "CPU_CombSort", false},
+    {"RadixSortLSD", "Поразрядная сортировка по младшим байтам", "CPU_RadixSortLSD", false},
+    {"CountingSort", "Линейная сортировка подсчетом частоты ключей", "CPU_CountingSort", false},
+    {"BucketSort", "Блочная сортировка распределением по бакетам", "CPU_BucketSort", false},
+    {"PancakeSort", "Блинная сортировка переворотами префиксов", "CPU_PancakeSort", false},
+    {"BogoSort", "Случайное угадывание правильного порядка", "CPU_BogoSort", false},
+    {"StoogeSort", "Рекурсивный неоптимальный алгоритм Stooge", "CPU_StoogeSort", false},
+    {"OddEvenSort", "Параллельная четно-нечетная сортировка", "CPU_OddEvenSort", false},
+    {"CycleSort", "Сортировка с минимизацией записи в память", "CPU_CycleSort", false},
+
+    {"GPU Bitonic", "Параллельная битоническая сеть CUDA", "GPU_Bitonic", true},
+    {"GPU Radix", "Высокоскоростной поразрядный CUDA-сортировщик", "GPU_Radix", true},
+    {"GPU Odd-Even", "Четно-нечетная сортировка на CUDA ядрах", "GPU_OddEven", true},
+    {"GPU std::sort", "Реализация сортировки Thrust на GPU", "GPU_StdSort", true},
+    {"GPU QuickSort", "Быстрая сортировка на GPU Thrust API", "GPU_QuickSort", true},
+    {"GPU MergeSort", "Сортировка слиянием в GPU памяти", "GPU_MergeSort", true},
+    {"GPU HeapSort", "Пирамидальная сортировка на CUDA Thrust", "GPU_HeapSort", true},
+    {"GPU TimSort", "Практический гибрид Timsort на GPU", "GPU_TimSort", true},
+    {"GPU BubbleSort", "Пузырьковый обход в GPU потоках", "GPU_BubbleSort", true},
+    {"GPU Selection", "Выборочная сортировка на GPU ядрах", "GPU_SelectionSort", true}
+};
+
+// --- Чтение реального CPU ---
+static QString getRealCpuName() {
+    QString cpu = "";
+#ifdef Q_OS_WIN
+    QSettings settings("HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", QSettings::NativeFormat);
+    cpu = settings.value("ProcessorNameString").toString().trimmed();
+#elif defined(Q_OS_LINUX)
+    QFile file("/proc/cpuinfo");
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            if (line.trimmed().startsWith("model name", Qt::CaseInsensitive)) {
+                QStringList parts = line.split(":");
+                if (parts.size() > 1) {
+                    cpu = parts[1].trimmed();
+                    break;
+                }
+            }
+        }
+        file.close();
+    }
+#elif defined(Q_OS_MAC)
+    char buffer[256];
+    size_t bufferlen = sizeof(buffer);
+    if (sysctlbyname("machdep.cpu.brand_string", &buffer, &bufferlen, NULL, 0) == 0) {
+        cpu = QString::fromLocal8Bit(buffer);
+    }
+#endif
+    if (cpu.isEmpty()) {
+        cpu = QSysInfo::currentCpuArchitecture().toUpper();
+    }
+    return cpu;
+}
+
+// --- Чтение реального GPU ---
+static QString getRealGpuName() {
+    int deviceCount = 0;
+    cudaError_t err = cudaGetDeviceCount(&deviceCount);
+    if (err == cudaSuccess && deviceCount > 0) {
+        cudaDeviceProp prop;
+        if (cudaGetDeviceProperties(&prop, 0) == cudaSuccess) {
+            return QString::fromUtf8(prop.name);
+        }
+    }
+    return "GPU Offline / No CUDA Device";
+}
+
+// --- Реализация AlgTile ---
+AlgTile::AlgTile(const QString& name, const QString& shortDesc, const QString& id, bool gpu, QWidget* parent)
+    : QFrame(parent), algId(id), isGPU(gpu) {
+    setObjectName("algTile");
+    setCursor(Qt::PointingHandCursor);
+
+    QHBoxLayout* mainLay = new QHBoxLayout(this);
+    mainLay->setContentsMargins(10, 8, 10, 8);
+    mainLay->setSpacing(10);
+
+    checkbox = new QCheckBox(this);
+    checkbox->setStyleSheet("QCheckBox::indicator { width: 14px; height: 14px; }");
+    mainLay->addWidget(checkbox);
+
+    QVBoxLayout* textLay = new QVBoxLayout();
+    textLay->setSpacing(2);
+
+    QHBoxLayout* titleRow = new QHBoxLayout();
+    titleRow->setSpacing(6);
+    titleLabel = new QLabel(name, this);
+    titleLabel->setStyleSheet("font-weight: 700; color: #f1f5f9; font-size: 12px; background: transparent;");
+    titleRow->addWidget(titleLabel);
+
+    QLabel* badge = new QLabel(gpu ? "🚀 GPU" : "💻 CPU", this);
+    badge->setStyleSheet(gpu ? "color: #6366f1; font-size: 9px; font-weight: 800; background: rgba(99,102,241,0.15); padding: 1px 4px; border-radius: 4px;"
+                             : "color: #3b82f6; font-size: 9px; font-weight: 800; background: rgba(59,130,246,0.15); padding: 1px 4px; border-radius: 4px;");
+    titleRow->addWidget(badge);
+    titleRow->addStretch();
+    textLay->addLayout(titleRow);
+
+    descLabel = new QLabel(shortDesc, this);
+    descLabel->setStyleSheet("color: #94a3b8; font-size: 10px; background: transparent;");
+    descLabel->setWordWrap(true);
+    textLay->addWidget(descLabel);
+
+    mainLay->addLayout(textLay, 1);
+
+    setStyleSheet(R"(
+        QFrame#algTile { background: #141428; border: 1px solid #232342; border-radius: 10px; }
+        QFrame#algTile:hover { border-color: #6366f1; background: #191932; }
+    )");
+}
+
+void AlgTile::mousePressEvent(QMouseEvent* event) {
+    checkbox->setChecked(!checkbox->isChecked());
+    QFrame::mousePressEvent(event);
+}
+
+// --- Реализация DescCard ---
+DescCard::DescCard(const AlgDescData& data, QWidget* parent) : QFrame(parent) {
+    setObjectName("descCard");
+    QVBoxLayout* lay = new QVBoxLayout(this);
+    lay->setContentsMargins(16, 16, 16, 16);
+    lay->setSpacing(10);
+
+    QHBoxLayout* topRow = new QHBoxLayout();
+    titleLabel = new QLabel(data.name, this);
+    titleLabel->setStyleSheet("font-size: 15px; font-weight: 700; color: #60a5fa; background: transparent;");
+    topRow->addWidget(titleLabel);
+    topRow->addStretch();
+
+    auto makeBadge = [&](const QString& label, const QString& val, const QString& bg) {
+        QLabel* b = new QLabel(QString("<b>%1</b> %2").arg(label, val), this);
+        b->setStyleSheet(QString("background: %1; color: #f1f5f9; font-size: 10px; padding: 3px 8px; border-radius: 6px;").arg(bg));
+        return b;
+    };
+
+    topRow->addWidget(makeBadge("Best", data.best, "rgba(16,185,129,0.15)"));
+    topRow->addWidget(makeBadge("Avg", data.avg, "rgba(59,130,246,0.15)"));
+    topRow->addWidget(makeBadge("Worst", data.worst, "rgba(239,68,68,0.15)"));
+    topRow->addWidget(makeBadge("Space", data.space, "rgba(245,158,11,0.15)"));
+
+    lay->addLayout(topRow);
+
+    descLabel = new QLabel(data.description, this);
+    descLabel->setStyleSheet("color: #cbd5e6; font-size: 12px; line-height: 1.4; background: transparent;");
+    descLabel->setWordWrap(true);
+    lay->addWidget(descLabel);
+
+    setStyleSheet(R"(
+        QFrame#descCard { background: #191929; border: 1px solid #232342; border-radius: 12px; }
+        QFrame#descCard:hover { border-color: #6366f1; }
+    )");
+}
+
 static QFrame* hLine(QWidget* parent) {
     QFrame* f = new QFrame(parent);
     f->setFrameShape(QFrame::HLine);
@@ -63,22 +239,13 @@ static QFrame* hLine(QWidget* parent) {
     f->setStyleSheet(QString("background:%1; border:none;").arg(C_BORDER));
     return f;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Helper: create a stat / metric card widget
-// ─────────────────────────────────────────────────────────────────────────────
 struct MetricCard {
-    QFrame*  frame;
-    QLabel*  value;
-    QLabel*  badge;
+    QFrame* frame;
+    QLabel* value;
+    QLabel* badge;
 };
-static MetricCard makeMetricCard(const QString& icon,
-                                  const QString& title,
-                                  const QString& defaultVal,
-                                  const QString& badgeText,
-                                  const QString& badgeColor,
-                                  QWidget* parent)
-{
+static MetricCard makeMetricCard(const QString& icon, const QString& title, const QString& defaultVal,
+                                  const QString& badgeText, const QString& badgeColor, QWidget* parent) {
     QFrame* card = new QFrame(parent);
     card->setObjectName("metricCard");
 
@@ -86,7 +253,6 @@ static MetricCard makeMetricCard(const QString& icon,
     cl->setContentsMargins(16, 14, 16, 14);
     cl->setSpacing(6);
 
-    // Icon + title row
     QHBoxLayout* header = new QHBoxLayout();
     header->setSpacing(8);
     QLabel* iconLbl = new QLabel(icon, parent);
@@ -100,12 +266,10 @@ static MetricCard makeMetricCard(const QString& icon,
     header->addWidget(dotMenu);
     cl->addLayout(header);
 
-    // Big value
     QLabel* valLbl = new QLabel(defaultVal, parent);
     valLbl->setStyleSheet(QString("color:%1; font-size:26px; font-weight:700; background:transparent;").arg(C_TEXT1));
     cl->addWidget(valLbl);
 
-    // Badge
     QLabel* badge = new QLabel(badgeText, parent);
     badge->setStyleSheet(QString("color:%1; font-size:10px; font-weight:600; background:transparent;").arg(badgeColor));
     cl->addWidget(badge);
@@ -113,32 +277,27 @@ static MetricCard makeMetricCard(const QString& icon,
     return {card, valLbl, badge};
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Constructor / Destructor
-// ─────────────────────────────────────────────────────────────────────────────
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_stopVisualRequested(false)
     , m_isVisualPaused(false)
     , m_visualDelayMs(50)
 {
-    setWindowTitle("SortBench: CUDA vs CPU  |  Analytics Dashboard");
+    setWindowTitle("SortBench: CUDA vs CPU | Analytics Dashboard");
     resize(1440, 900);
     setMinimumSize(1100, 700);
 
     m_benchRunner = new BenchmarkRunner(this);
-    connect(m_benchRunner, &BenchmarkRunner::algorithmCompleted,
-            this, &MainWindow::onAlgorithmCompleted);
-    connect(m_benchRunner, &BenchmarkRunner::progressUpdated,
-            this, &MainWindow::onBenchmarkProgress);
-    connect(m_benchRunner, &BenchmarkRunner::finishedAll,
-            this, &MainWindow::onBenchmarkFinished);
+    connect(m_benchRunner, &BenchmarkRunner::algorithmCompleted, this, &MainWindow::onAlgorithmCompleted);
+    connect(m_benchRunner, &BenchmarkRunner::progressUpdated, this, &MainWindow::onBenchmarkProgress);
+    connect(m_benchRunner, &BenchmarkRunner::finishedAll, this, &MainWindow::onBenchmarkFinished);
 
     applyMasterStylesheet();
     setupUI();
     setupCharts();
     loadAvailableAlgorithms();
     onGenerateVisualArray();
+    updateSystemTelemetry();
 }
 
 MainWindow::~MainWindow() {
@@ -149,118 +308,39 @@ MainWindow::~MainWindow() {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Master Stylesheet
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::applyMasterStylesheet() {
     setStyleSheet(QString(R"(
-        /* ── Root ── */
-        QMainWindow, QWidget { background:%1; color:%2;
-            font-family:'Segoe UI','SF Pro Display',sans-serif; font-size:13px; }
-
-        /* ── Scroll bars ── */
+        QMainWindow, QWidget { background:%1; color:%2; font-family:'Segoe UI',sans-serif; font-size:13px; }
         QScrollBar:vertical   { background:%3; width:6px; margin:0; border-radius:3px; }
         QScrollBar::handle:vertical { background:%4; border-radius:3px; min-height:24px; }
         QScrollBar::handle:vertical:hover { background:%5; }
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }
         QScrollBar:horizontal { background:%3; height:6px; border-radius:3px; }
         QScrollBar::handle:horizontal { background:%4; border-radius:3px; }
-
-        /* ── Generic frame/cards ── */
-        QFrame#metricCard {
-            background:%6; border:1px solid %7;
-            border-radius:16px;
-        }
+        QFrame#metricCard { background:%6; border:1px solid %7; border-radius:16px; }
         QFrame#metricCard:hover { border-color:%5; }
-
-        /* ── Table ── */
-        QTableWidget {
-            background:%6; border:none; border-radius:0;
-            gridline-color:%7; color:%2; font-size:12px;
-        }
+        QTableWidget { background:%6; border:none; gridline-color:%7; color:%2; font-size:12px; }
         QTableWidget::item { padding:8px 12px; }
         QTableWidget::item:selected { background:%5; color:white; }
         QTableWidget::item:alternate { background:#14142a; }
-        QHeaderView::section {
-            background:#141428; color:%8; padding:10px 12px;
-            border:none; border-bottom:1px solid %7; font-weight:600; font-size:11px;
-        }
-
-        /* ── QListWidget (algorithm selector) ── */
-        QListWidget {
-            background:#0f0f22; border:none; border-radius:12px;
-            padding:4px; outline:none;
-        }
-        QListWidget::item {
-            border-radius:8px; padding:7px 12px; margin:2px 0; color:%8;
-        }
-        QListWidget::item:hover  { background:#1e1e38; color:%2; }
-        QListWidget::item:selected {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                stop:0 %5, stop:1 #4f8ded); color:white; font-weight:600;
-        }
-
-        /* ── Combo / Spin ── */
-        QComboBox, QSpinBox {
-            background:#141428; border:1px solid %7; border-radius:8px;
-            padding:5px 10px; color:%2; min-height:24px;
-        }
+        QHeaderView::section { background:#141428; color:%8; padding:10px 12px; border:none; border-bottom:1px solid %7; font-weight:600; font-size:11px; }
+        QComboBox, QSpinBox { background:#141428; border:1px solid %7; border-radius:8px; padding:5px 10px; color:%2; min-height:24px; }
         QComboBox:hover, QSpinBox:hover { border-color:%5; }
         QComboBox::drop-down { border:none; width:20px; }
-        QComboBox QAbstractItemView {
-            background:#1a1a30; border:1px solid %7; border-radius:10px;
-            selection-background-color:%5; selection-color:white; padding:4px;
-        }
-        QSpinBox::up-button, QSpinBox::down-button {
-            background:#1e1e38; border:none; width:18px; border-radius:4px; }
+        QComboBox QAbstractItemView { background:#1a1a30; border:1px solid %7; border-radius:10px; selection-background-color:%5; selection-color:white; padding:4px; }
+        QSpinBox::up-button, QSpinBox::down-button { background:#1e1e38; border:none; width:18px; border-radius:4px; }
         QSpinBox::up-button:hover, QSpinBox::down-button:hover { background:%5; }
-
-        /* ── Progress Bar ── */
-        QProgressBar {
-            background:#0f0f22; border:none; border-radius:6px;
-            height:8px; text-align:center; color:transparent;
-        }
-        QProgressBar::chunk {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                stop:0 %5, stop:1 #3b82f6); border-radius:6px;
-        }
-
-        /* ── Slider ── */
-        QSlider::groove:horizontal {
-            background:#1e1e38; height:4px; border-radius:2px; }
-        QSlider::handle:horizontal {
-            background:%5; width:14px; height:14px; margin:-5px 0;
-            border-radius:7px; border:none; }
+        QProgressBar { background:#0f0f22; border:none; border-radius:6px; height:8px; text-align:center; color:transparent; }
+        QProgressBar::chunk { background:qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 %5, stop:1 #3b82f6); border-radius:6px; }
+        QSlider::groove:horizontal { background:#1e1e38; height:4px; border-radius:2px; }
+        QSlider::handle:horizontal { background:%5; width:14px; height:14px; margin:-5px 0; border-radius:7px; border:none; }
         QSlider::handle:horizontal:hover { background:#818cf8; }
-        QSlider::sub-page:horizontal {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                stop:0 %5, stop:1 #3b82f6); border-radius:2px; }
-
-        /* ── Tooltip ── */
-        QToolTip {
-            background:#1e1e38; border:1px solid %7; border-radius:8px;
-            color:%2; padding:6px 12px; font-size:12px; }
-
-        /* ── Labels ── */
-        QLabel { background:transparent; }
-
-        /* ── Charts ── */
-        QChartView { background:transparent; border:none; }
+        QSlider::sub-page:horizontal { background:qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 %5, stop:1 #3b82f6); border-radius:2px; }
+        QToolTip { background:#1e1e38; border:1px solid %7; border-radius:8px; color:%2; padding:6px 12px; font-size:12px; }
     )")
-    .arg(C_BG_ROOT)    // %1  root bg
-    .arg(C_TEXT1)      // %2  text primary
-    .arg(C_BG_ROOT)    // %3  scrollbar track
-    .arg(C_BORDER)     // %4  scrollbar handle
-    .arg(C_ACCENT)     // %5  accent
-    .arg(C_BG_CARD)    // %6  card bg
-    .arg(C_BORDER)     // %7  border
-    .arg(C_TEXT2)      // %8  text secondary
-    );
+    .arg(C_BG_ROOT).arg(C_TEXT1).arg(C_BG_ROOT).arg(C_BORDER).arg(C_ACCENT).arg(C_BG_CARD).arg(C_BORDER).arg(C_TEXT2));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  setupUI  (root layout: sidebar | content | right panel)
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupUI() {
     QWidget* root = new QWidget(this);
     setCentralWidget(root);
@@ -269,17 +349,14 @@ void MainWindow::setupUI() {
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    // ── Left icon sidebar ────────────────────────────────────────────────────
     setupLeftSidebar(rootLayout);
 
-    // Thin vertical separator
     QFrame* vLine = new QFrame(root);
     vLine->setFrameShape(QFrame::VLine);
     vLine->setFixedWidth(1);
     vLine->setStyleSheet(QString("background:%1; border:none;").arg(C_BORDER));
     rootLayout->addWidget(vLine);
 
-    // ── Centre column (topbar + stacked pages) ───────────────────────────────
     QWidget* centreCol = new QWidget(root);
     centreCol->setObjectName("centreCol");
     QVBoxLayout* centreLayout = new QVBoxLayout(centreCol);
@@ -291,11 +368,11 @@ void MainWindow::setupUI() {
     m_stackedWidget = new QStackedWidget(centreCol);
     setupBenchmarkPage();
     setupVisualizerPage();
+    setupDescriptionPage();
     centreLayout->addWidget(m_stackedWidget, 1);
 
     rootLayout->addWidget(centreCol, 1);
 
-    // ── Right configuration sidebar ──────────────────────────────────────────
     QFrame* vLine2 = new QFrame(root);
     vLine2->setFrameShape(QFrame::VLine);
     vLine2->setFixedWidth(1);
@@ -305,9 +382,6 @@ void MainWindow::setupUI() {
     setupRightSidebar(rootLayout);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Left sidebar
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupLeftSidebar(QHBoxLayout* root) {
     QFrame* sidebar = new QFrame(this);
     sidebar->setObjectName("leftSidebar");
@@ -318,22 +392,16 @@ void MainWindow::setupLeftSidebar(QHBoxLayout* root) {
     lay->setContentsMargins(10, 16, 10, 16);
     lay->setSpacing(4);
 
-    // ── Brand logo ───────────────────────────────────────────────────────────
     QLabel* logo = new QLabel("⚡", sidebar);
     logo->setAlignment(Qt::AlignCenter);
     logo->setFixedSize(48, 48);
-    logo->setStyleSheet(QString(
-        "font-size:22px; color:%1;"
-        "background:rgba(99,102,241,0.18);"
-        "border-radius:14px; border:1px solid rgba(99,102,241,0.35);"
-    ).arg(C_ACCENT));
+    logo->setStyleSheet(QString("font-size:22px; color:%1; background:rgba(99,102,241,0.18); border-radius:14px; border:1px solid rgba(99,102,241,0.35);").arg(C_ACCENT));
     lay->addWidget(logo);
 
     lay->addSpacing(12);
     lay->addWidget(hLine(sidebar));
     lay->addSpacing(12);
 
-    // ── Nav helper ───────────────────────────────────────────────────────────
     auto navBtn = [&](const QString& icon, const QString& tip, bool active) -> QToolButton* {
         QToolButton* btn = new QToolButton(sidebar);
         btn->setText(icon);
@@ -343,207 +411,136 @@ void MainWindow::setupLeftSidebar(QHBoxLayout* root) {
         btn->setCheckable(true);
         btn->setChecked(active);
         btn->setStyleSheet(QString(R"(
-            QToolButton {
-                font-size:20px; border-radius:13px; border:none;
-                background:%1; color:%2;
-            }
+            QToolButton { font-size:20px; border-radius:13px; border:none; background:%1; color:%2; }
             QToolButton:hover  { background:rgba(99,102,241,0.22); color:#a5b4fc; }
             QToolButton:checked { background:rgba(99,102,241,0.28); color:%3; }
-        )").arg(active ? "rgba(99,102,241,0.28)" : "transparent")
-           .arg(active ? C_ACCENT : C_TEXT3)
-           .arg(C_ACCENT));
+        )").arg(active ? "rgba(99,102,241,0.28)" : "transparent").arg(active ? C_ACCENT : C_TEXT3).arg(C_ACCENT));
         lay->addWidget(btn, 0, Qt::AlignHCenter);
         return btn;
     };
 
     m_navBenchBtn  = navBtn("📊", "Бенчмарки / Аналитика", true);
     m_navVisualBtn = navBtn("🎬", "Интерактивный визуализатор", false);
+    m_navDescBtn   = navBtn("📖", "Теоретический справочник", false);
     m_navExportBtn = navBtn("💾", "Экспорт результатов", false);
-                     navBtn("📈", "Сравнительные графики", false);
 
     connect(m_navBenchBtn,  &QToolButton::clicked, this, &MainWindow::switchToBenchmarkPage);
     connect(m_navVisualBtn, &QToolButton::clicked, this, &MainWindow::switchToVisualizerPage);
+    connect(m_navDescBtn,   &QToolButton::clicked, this, &MainWindow::switchToDescriptionPage);
     connect(m_navExportBtn, &QToolButton::clicked, this, &MainWindow::onExportCSV);
 
     lay->addStretch();
     lay->addWidget(hLine(sidebar));
     lay->addSpacing(8);
 
-    // Settings btn at bottom
     QToolButton* settBtn = new QToolButton(sidebar);
     settBtn->setText("⚙️");
     settBtn->setToolTip("Настройки");
     settBtn->setFixedSize(48, 48);
-    settBtn->setStyleSheet(QString(
-        "QToolButton { font-size:20px; border-radius:13px; border:none;"
-        " background:transparent; color:%1; }"
-        "QToolButton:hover { background:rgba(99,102,241,0.2); color:#a5b4fc; }"
-    ).arg(C_TEXT3));
+    settBtn->setStyleSheet(QString("QToolButton { font-size:20px; border-radius:13px; border:none; background:transparent; color:%1; } QToolButton:hover { background:rgba(99,102,241,0.2); color:#a5b4fc; }").arg(C_TEXT3));
     lay->addWidget(settBtn, 0, Qt::AlignHCenter);
 
     root->addWidget(sidebar);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Top bar
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupTopBar(QVBoxLayout* parent) {
     QFrame* topBar = new QFrame(this);
     topBar->setObjectName("topBar");
     topBar->setFixedHeight(66);
-    topBar->setStyleSheet(QString(
-        "QFrame#topBar { background:%1; border-bottom:1px solid %2; }"
-    ).arg(C_BG_TOPBAR).arg(C_BORDER));
+    topBar->setStyleSheet(QString("QFrame#topBar { background:%1; border-bottom:1px solid %2; }").arg(C_BG_TOPBAR).arg(C_BORDER));
 
     QHBoxLayout* lay = new QHBoxLayout(topBar);
     lay->setContentsMargins(24, 0, 20, 0);
     lay->setSpacing(16);
 
-    // ── Hamburger + page title ───────────────────────────────────────────────
     QToolButton* burgerBtn = new QToolButton(topBar);
     burgerBtn->setText("☰");
     burgerBtn->setFixedSize(36, 36);
-    burgerBtn->setStyleSheet(QString(
-        "QToolButton { font-size:18px; background:transparent; border:none; color:%1; border-radius:8px; }"
-        "QToolButton:hover { background:%2; color:%3; }"
-    ).arg(C_TEXT2).arg(C_BG_CARD).arg(C_TEXT1));
+    burgerBtn->setStyleSheet(QString("QToolButton { font-size:18px; background:transparent; border:none; color:%1; border-radius:8px; } QToolButton:hover { background:%2; color:%3; }").arg(C_TEXT2).arg(C_BG_CARD).arg(C_TEXT1));
     lay->addWidget(burgerBtn);
 
     QVBoxLayout* titleVLay = new QVBoxLayout();
     titleVLay->setSpacing(1);
-    m_pageTitle = new QLabel("Dashboard", topBar);
-    m_pageTitle->setStyleSheet(QString(
-        "color:%1; font-size:17px; font-weight:700; background:transparent;"
-    ).arg(C_TEXT1));
+    m_pageTitle = new QLabel("Панель управления", topBar);
+    m_pageTitle->setStyleSheet(QString("color:%1; font-size:17px; font-weight:700; background:transparent;").arg(C_TEXT1));
     m_pageSubtitle = new QLabel("SortBench Analytics", topBar);
-    m_pageSubtitle->setStyleSheet(QString(
-        "color:%1; font-size:11px; background:transparent;"
-    ).arg(C_TEXT3));
+    m_pageSubtitle->setStyleSheet(QString("color:%1; font-size:11px; background:transparent;").arg(C_TEXT3));
     titleVLay->addWidget(m_pageTitle);
     titleVLay->addWidget(m_pageSubtitle);
     lay->addLayout(titleVLay);
 
-    // ── View toggle pills ────────────────────────────────────────────────────
-    auto pillBtn = [&](const QString& txt, bool active) -> QPushButton* {
-        QPushButton* b = new QPushButton(txt, topBar);
-        b->setCheckable(true);
-        b->setChecked(active);
-        b->setCursor(Qt::PointingHandCursor);
-        b->setStyleSheet(QString(R"(
-            QPushButton {
-                font-size:11px; font-weight:600; border-radius:8px;
-                padding:5px 14px; border:1px solid %1;
-                background:%2; color:%3;
-            }
-            QPushButton:checked { background:%4; color:white; border-color:%4; }
-            QPushButton:hover:!checked { background:%5; color:%6; }
-        )").arg(C_BORDER)
-           .arg(active ? C_ACCENT : "transparent")
-           .arg(active ? "white" : C_TEXT2)
-           .arg(C_ACCENT)
-           .arg(C_BG_CARD)
-           .arg(C_TEXT1));
-        return b;
-    };
-
-    QPushButton* pb1 = pillBtn("Аналитика", true);
-    QPushButton* pb2 = pillBtn("Визуализатор", false);
-    connect(pb1, &QPushButton::clicked, this, &MainWindow::switchToBenchmarkPage);
-    connect(pb2, &QPushButton::clicked, this, &MainWindow::switchToVisualizerPage);
-    lay->addWidget(pb1);
-    lay->addWidget(pb2);
-
     lay->addStretch();
 
-    // ── Search field ─────────────────────────────────────────────────────────
+    // Поиск
     QFrame* searchFrame = new QFrame(topBar);
     searchFrame->setFixedSize(240, 36);
-    searchFrame->setStyleSheet(QString(
-        "QFrame { background:%1; border:1px solid %2; border-radius:10px; }"
-        "QFrame:hover { border-color:%3; }"
-    ).arg(C_BG_CARD).arg(C_BORDER).arg(C_ACCENT));
+    searchFrame->setStyleSheet(QString("QFrame { background:%1; border:1px solid %2; border-radius:10px; } QFrame:hover { border-color:%3; }").arg(C_BG_CARD).arg(C_BORDER).arg(C_ACCENT));
 
     QHBoxLayout* searchLay = new QHBoxLayout(searchFrame);
     searchLay->setContentsMargins(10, 0, 10, 0);
     searchLay->setSpacing(6);
     QLabel* sIcon = new QLabel("🔍", searchFrame);
     sIcon->setStyleSheet("font-size:14px; background:transparent;");
-    QLineEdit* searchEdit = new QLineEdit(searchFrame);
-    searchEdit->setPlaceholderText("Поиск алгоритмов...");
-    searchEdit->setStyleSheet(QString(
-        "QLineEdit { background:transparent; border:none; color:%1; font-size:12px; }"
-        "QLineEdit::placeholder { color:%2; }"
-    ).arg(C_TEXT1).arg(C_TEXT3));
+
+    m_topSearchEdit = new QLineEdit(searchFrame);
+    m_topSearchEdit->setPlaceholderText("Поиск...");
+    m_topSearchEdit->setStyleSheet(QString("QLineEdit { background:transparent; border:none; color:%1; font-size:12px; } QLineEdit::placeholder { color:%2; }").arg(C_TEXT1).arg(C_TEXT3));
+
     searchLay->addWidget(sIcon);
-    searchLay->addWidget(searchEdit);
+    searchLay->addWidget(m_topSearchEdit);
     lay->addWidget(searchFrame);
 
-    // ── + Add / Run button ───────────────────────────────────────────────────
+    // Подключение сквозного поиска
+    connect(m_topSearchEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
+        if (m_sidebarSearch) {
+            m_sidebarSearch->setText(text);
+        }
+        for (DescCard* card : m_descCards) {
+            bool matches = card->titleLabel->text().contains(text, Qt::CaseInsensitive) ||
+                           card->descLabel->text().contains(text, Qt::CaseInsensitive);
+            card->setVisible(matches);
+        }
+    });
+
     m_runBenchBtn = new QPushButton("+ Запуск", topBar);
     m_runBenchBtn->setFixedHeight(36);
     m_runBenchBtn->setCursor(Qt::PointingHandCursor);
     m_runBenchBtn->setStyleSheet(QString(R"(
-        QPushButton {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 %1, stop:1 %2);
-            color:white; border:none; border-radius:10px;
-            padding:0 18px; font-weight:700; font-size:12px;
-        }
-        QPushButton:hover {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #818cf8, stop:1 %1); }
-        QPushButton:pressed { background:%2; }
+        QPushButton { background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); color:white; border:none; border-radius:10px; padding:0 18px; font-weight:700; font-size:12px; }
+        QPushButton:hover { background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 #818cf8, stop:1 %1); }
         QPushButton:disabled { background:#2a2a44; color:%3; }
     )").arg(C_ACCENT).arg(C_ACCENT2).arg(C_TEXT3));
     connect(m_runBenchBtn, &QPushButton::clicked, this, &MainWindow::onStartBenchmark);
     lay->addWidget(m_runBenchBtn);
 
-    // ── Stop button ──────────────────────────────────────────────────────────
     m_stopBenchBtn = new QPushButton("■ Стоп", topBar);
     m_stopBenchBtn->setFixedHeight(36);
     m_stopBenchBtn->setEnabled(false);
     m_stopBenchBtn->setCursor(Qt::PointingHandCursor);
     m_stopBenchBtn->setStyleSheet(QString(R"(
-        QPushButton {
-            background:#2a1c1c; color:#f87171; border:1px solid #5a2424;
-            border-radius:10px; padding:0 14px; font-weight:600; font-size:12px;
-        }
+        QPushButton { background:#2a1c1c; color:#f87171; border:1px solid #5a2424; border-radius:10px; padding:0 14px; font-weight:600; font-size:12px; }
         QPushButton:hover { background:#3b1f1f; border-color:%1; }
         QPushButton:disabled { background:#1a1a28; color:%2; border-color:%3; }
     )").arg(C_DANGER).arg(C_TEXT3).arg(C_BORDER));
     connect(m_stopBenchBtn, &QPushButton::clicked, this, &MainWindow::onStopBenchmark);
     lay->addWidget(m_stopBenchBtn);
 
-    // ── Notification / GPU toggle ────────────────────────────────────────────
     m_toggleGpuBtn = new QPushButton(topBar);
     m_toggleGpuBtn->setFixedSize(38, 38);
     m_toggleGpuBtn->setCursor(Qt::PointingHandCursor);
-    m_toggleGpuBtn->setToolTip("Переключить GPU / PCIe шину");
-    // Small green dot to act as indicator
-    m_ledIndicator = new QWidget(m_toggleGpuBtn);
-    m_ledIndicator->setFixedSize(8, 8);
-    m_ledIndicator->move(25, 5);
-    m_ledIndicator->setStyleSheet(QString(
-        "background:%1; border-radius:4px; border:1px solid rgba(0,0,0,0.4);"
-    ).arg(C_SUCCESS));
+    m_toggleGpuBtn->setToolTip("Подключение/Отключение GPU шины");
 
     m_toggleGpuBtn->setStyleSheet(QString(R"(
-        QPushButton {
-            background:%1; border:1px solid %2; border-radius:10px;
-            font-size:18px; color:%3;
-        }
+        QPushButton { background:%1; border:1px solid %2; border-radius:10px; font-size:18px; color:%3; }
         QPushButton:hover { background:%4; border-color:%5; }
-    )").arg(C_BG_CARD).arg(C_BORDER).arg(C_TEXT2)
-       .arg(C_BG_SIDEBAR).arg(C_ACCENT));
+    )").arg(C_BG_CARD).arg(C_BORDER).arg(C_TEXT2).arg(C_BG_SIDEBAR).arg(C_ACCENT));
     m_toggleGpuBtn->setText("🎮");
     connect(m_toggleGpuBtn, &QPushButton::clicked, this, &MainWindow::onToggleGpu);
     lay->addWidget(m_toggleGpuBtn);
 
-    // ── User avatar area ─────────────────────────────────────────────────────
+    // Чип телеметрии в TopBar
     QFrame* userChip = new QFrame(topBar);
-    userChip->setStyleSheet(QString(
-        "QFrame { background:%1; border:1px solid %2; border-radius:10px; }"
-    ).arg(C_BG_CARD).arg(C_BORDER));
+    userChip->setStyleSheet(QString("QFrame { background:%1; border:1px solid %2; border-radius:10px; }").arg(C_BG_CARD).arg(C_BORDER));
     QHBoxLayout* ucLay = new QHBoxLayout(userChip);
     ucLay->setContentsMargins(8, 4, 12, 4);
     ucLay->setSpacing(8);
@@ -551,19 +548,16 @@ void MainWindow::setupTopBar(QVBoxLayout* parent) {
     QLabel* avatar = new QLabel("🖥", userChip);
     avatar->setFixedSize(30, 30);
     avatar->setAlignment(Qt::AlignCenter);
-    avatar->setStyleSheet(QString(
-        "font-size:16px; background:rgba(99,102,241,0.2);"
-        "border-radius:8px; color:%1;"
-    ).arg(C_ACCENT));
+    avatar->setStyleSheet(QString("font-size:16px; background:rgba(99,102,241,0.2); border-radius:8px; color:%1;").arg(C_ACCENT));
 
     QVBoxLayout* nameBlock = new QVBoxLayout();
     nameBlock->setSpacing(0);
-    QLabel* sysName = new QLabel("i9-14900K", userChip);
-    sysName->setStyleSheet(QString("color:%1; font-size:11px; font-weight:700; background:transparent;").arg(C_TEXT1));
-    m_telemetryTextLabel = new QLabel("RTX 4090 · Online", userChip);
-    m_telemetryTextLabel->setStyleSheet(QString("color:%1; font-size:10px; background:transparent;").arg(C_TEXT3));
-    nameBlock->addWidget(sysName);
-    nameBlock->addWidget(m_telemetryTextLabel);
+    m_topCpuLabel = new QLabel("Загрузка...", userChip);
+    m_topCpuLabel->setStyleSheet(QString("color:%1; font-size:11px; font-weight:700; background:transparent;").arg(C_TEXT1));
+    m_topGpuLabel = new QLabel("GPU Инициализация...", userChip);
+    m_topGpuLabel->setStyleSheet(QString("color:%1; font-size:10px; background:transparent;").arg(C_TEXT3));
+    nameBlock->addWidget(m_topCpuLabel);
+    nameBlock->addWidget(m_topGpuLabel);
 
     ucLay->addWidget(avatar);
     ucLay->addLayout(nameBlock);
@@ -572,9 +566,6 @@ void MainWindow::setupTopBar(QVBoxLayout* parent) {
     parent->addWidget(topBar);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Page 0: Benchmark Analytics
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupBenchmarkPage() {
     QWidget* page = new QWidget(this);
     page->setStyleSheet(QString("background:%1;").arg(C_BG_ROOT));
@@ -583,42 +574,21 @@ void MainWindow::setupBenchmarkPage() {
     pageLay->setContentsMargins(20, 16, 20, 16);
     pageLay->setSpacing(16);
 
-    // ── Section label ────────────────────────────────────────────────────────
     QHBoxLayout* hdrRow = new QHBoxLayout();
-    QLabel* secLabel = new QLabel("Overall Performance", page);
+    QLabel* secLabel = new QLabel("Общая производительность", page);
     secLabel->setStyleSheet(QString("color:%1; font-size:16px; font-weight:700;").arg(C_TEXT1));
-    QLabel* allTime = new QLabel("All Time", page);
-    allTime->setStyleSheet(QString(R"(
-        color:%1; font-size:11px; font-weight:600;
-        background:rgba(99,102,241,0.18); border-radius:6px;
-        padding:3px 10px; border:1px solid rgba(99,102,241,0.3);
-    )").arg(C_ACCENT));
-    QLabel* thisYear = new QLabel("This Year", page);
-    thisYear->setStyleSheet(QString("color:%1; font-size:11px; padding:3px 10px;").arg(C_TEXT3));
-    QLabel* thisWeek = new QLabel("This Week", page);
-    thisWeek->setStyleSheet(thisYear->styleSheet());
-
     hdrRow->addWidget(secLabel);
-    hdrRow->addSpacing(12);
-    hdrRow->addWidget(allTime);
-    hdrRow->addWidget(thisYear);
-    hdrRow->addWidget(thisWeek);
     hdrRow->addStretch();
 
-    // Export icon button
     QPushButton* dlBtn = new QPushButton("⬇ Отчёт", page);
     dlBtn->setStyleSheet(QString(R"(
-        QPushButton {
-            background:%1; border:1px solid %2; border-radius:8px;
-            color:%3; font-size:11px; font-weight:600; padding:4px 12px;
-        }
+        QPushButton { background:%1; border:1px solid %2; border-radius:8px; color:%3; font-size:11px; font-weight:600; padding:4px 12px; }
         QPushButton:hover { border-color:%4; color:%5; }
     )").arg(C_BG_CARD).arg(C_BORDER).arg(C_TEXT2).arg(C_ACCENT).arg(C_TEXT1));
     connect(dlBtn, &QPushButton::clicked, this, &MainWindow::onExportCSV);
     hdrRow->addWidget(dlBtn);
     pageLay->addLayout(hdrRow);
 
-    // ── Chart card ───────────────────────────────────────────────────────────
     QFrame* chartCard = new QFrame(page);
     chartCard->setObjectName("metricCard");
     chartCard->setMinimumHeight(260);
@@ -628,56 +598,42 @@ void MainWindow::setupBenchmarkPage() {
 
     m_chartView = new QChartView(chartCard);
     m_chartView->setRenderHint(QPainter::Antialiasing);
-    m_chartView->setStyleSheet("background:transparent; border:none;");
     chartCardLay->addWidget(m_chartView);
-
     pageLay->addWidget(chartCard, 2);
 
-    // ── Metric cards row ─────────────────────────────────────────────────────
     QHBoxLayout* metricsRow = new QHBoxLayout();
     metricsRow->setSpacing(12);
 
-    auto mc1 = makeMetricCard("⏱", "Часов замеров", "—", "Всего тестов: 0", C_TEXT3, page);
-    mc1.frame->setMinimumWidth(140);
+    auto mc1 = makeMetricCard("⏱", "Тестов пройдено", "—", "Всего алгоритмов: 0", C_TEXT3, page);
     m_metricAlgCount = mc1.value;
     metricsRow->addWidget(mc1.frame, 1);
 
     auto mc2 = makeMetricCard("🏆", "Лучший CPU", "— ms", "std::sort / QuickSort", C_TEXT3, page);
-    mc2.frame->setMinimumWidth(140);
     m_metricBestCpu = mc2.value;
     metricsRow->addWidget(mc2.frame, 1);
 
     auto mc3 = makeMetricCard("🚀", "Лучший GPU", "— ms", "Bitonic / Radix CUDA", C_TEXT3, page);
-    mc3.frame->setMinimumWidth(140);
     m_metricBestGpu = mc3.value;
     metricsRow->addWidget(mc3.frame, 1);
 
     auto mc4 = makeMetricCard("⚡", "GPU Ускорение", "—×", "vs лучший CPU", C_TEXT3, page);
-    mc4.frame->setMinimumWidth(140);
     m_metricSpeedup = mc4.value;
     metricsRow->addWidget(mc4.frame, 1);
 
     pageLay->addLayout(metricsRow);
 
-    // ── Results table card ───────────────────────────────────────────────────
     QFrame* tableCard = new QFrame(page);
     tableCard->setObjectName("metricCard");
-    tableCard->setStyleSheet(QString(
-        "QFrame#metricCard { background:%1; border:1px solid %2; border-radius:16px; }"
-    ).arg(C_BG_CARD).arg(C_BORDER));
 
     QVBoxLayout* tableCardLay = new QVBoxLayout(tableCard);
     tableCardLay->setContentsMargins(0, 0, 0, 0);
     tableCardLay->setSpacing(0);
 
-    // Table header bar
     QFrame* tableHdr = new QFrame(tableCard);
-    tableHdr->setStyleSheet(QString(
-        "background:%1; border-radius:16px 16px 0 0; border-bottom:1px solid %2;"
-    ).arg(C_BG_SIDEBAR).arg(C_BORDER));
+    tableHdr->setStyleSheet(QString("background:%1; border-radius:16px 16px 0 0; border-bottom:1px solid %2;").arg(C_BG_SIDEBAR).arg(C_BORDER));
     QHBoxLayout* thLay = new QHBoxLayout(tableHdr);
     thLay->setContentsMargins(16, 10, 16, 10);
-    QLabel* tbTitle = new QLabel("Результаты бенчмарков", tableHdr);
+    QLabel* tbTitle = new QLabel("Таблица результатов", tableHdr);
     tbTitle->setStyleSheet(QString("color:%1; font-weight:700; font-size:13px;").arg(C_TEXT1));
     thLay->addWidget(tbTitle);
     thLay->addStretch();
@@ -693,33 +649,19 @@ void MainWindow::setupBenchmarkPage() {
     m_statsTable = new QTableWidget(tableCard);
     m_statsTable->setColumnCount(9);
     m_statsTable->setHorizontalHeaderLabels({
-        "Алгоритм", "Тип", "N",
-        "Min ms", "Max ms", "Avg ms", "Median ms",
-        "GPU Kernel", "Статус"
+        "Алгоритм", "Тип", "N", "Min ms", "Max ms", "Avg ms", "Median ms", "GPU Kernel", "Статус"
     });
     m_statsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     m_statsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_statsTable->setAlternatingRowColors(true);
     m_statsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_statsTable->setShowGrid(true);
-    m_statsTable->setStyleSheet(QString(R"(
-        QTableWidget {
-            background:%1; border:none; border-radius:0 0 16px 16px;
-            gridline-color:%2; alternate-background-color:%3;
-        }
-        QTableWidget::item { padding:8px 10px; color:%4; }
-        QTableWidget::item:selected { background:%5; color:white; }
-    )").arg(C_BG_CARD).arg(C_BORDER).arg(C_BG_ROOT).arg(C_TEXT1).arg(C_ACCENT));
     tableCardLay->addWidget(m_statsTable);
 
     pageLay->addWidget(tableCard, 1);
-
     m_stackedWidget->addWidget(page);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Page 1: Interactive Visualiser
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupVisualizerPage() {
     QWidget* page = new QWidget(this);
     page->setStyleSheet(QString("background:%1;").arg(C_BG_ROOT));
@@ -728,17 +670,12 @@ void MainWindow::setupVisualizerPage() {
     lay->setContentsMargins(20, 16, 20, 12);
     lay->setSpacing(12);
 
-    // Section title
     QLabel* secTitle = new QLabel("Интерактивный симулятор", page);
     secTitle->setStyleSheet(QString("color:%1; font-size:16px; font-weight:700;").arg(C_TEXT1));
     lay->addWidget(secTitle);
 
-    // Visualizer card
     QFrame* vizCard = new QFrame(page);
     vizCard->setObjectName("metricCard");
-    vizCard->setStyleSheet(QString(
-        "QFrame#metricCard { background:%1; border:1px solid %2; border-radius:16px; }"
-    ).arg(C_BG_CARD).arg(C_BORDER));
     QVBoxLayout* vcLay = new QVBoxLayout(vizCard);
     vcLay->setContentsMargins(12, 12, 12, 12);
     vcLay->setSpacing(0);
@@ -748,12 +685,8 @@ void MainWindow::setupVisualizerPage() {
     vcLay->addWidget(m_visualizer, 1);
     lay->addWidget(vizCard, 1);
 
-    // Control bar card
     QFrame* ctrlCard = new QFrame(page);
     ctrlCard->setObjectName("metricCard");
-    ctrlCard->setStyleSheet(QString(
-        "QFrame#metricCard { background:%1; border:1px solid %2; border-radius:14px; }"
-    ).arg(C_BG_CARD).arg(C_BORDER));
 
     QHBoxLayout* ctrlLay = new QHBoxLayout(ctrlCard);
     ctrlLay->setContentsMargins(16, 12, 16, 12);
@@ -777,51 +710,39 @@ void MainWindow::setupVisualizerPage() {
     m_visualSizeSpin->setFixedWidth(70);
     ctrlLay->addWidget(m_visualSizeSpin);
 
-    // Gen button
     m_visualGenBtn = new QPushButton("⟳ Генерировать", ctrlCard);
     m_visualGenBtn->setStyleSheet(QString(R"(
-        QPushButton { background:%1; border:1px solid %2; border-radius:9px;
-            padding:6px 14px; color:%3; font-weight:600; font-size:12px; }
+        QPushButton { background:%1; border:1px solid %2; border-radius:9px; padding:6px 14px; color:%3; font-weight:600; font-size:12px; }
         QPushButton:hover { border-color:%4; color:%5; }
     )").arg(C_BG_SIDEBAR).arg(C_BORDER).arg(C_TEXT2).arg(C_ACCENT).arg(C_TEXT1));
     connect(m_visualGenBtn, &QPushButton::clicked, this, &MainWindow::onGenerateVisualArray);
     ctrlLay->addWidget(m_visualGenBtn);
 
-    ctrlLay->addWidget(hLine(ctrlCard));  // Won't work as QHBoxLayout child, use spacer
     ctrlLay->addSpacing(4);
 
-    // Start
     m_visualStartBtn = new QPushButton("▶ Старт", ctrlCard);
     m_visualStartBtn->setStyleSheet(QString(R"(
-        QPushButton {
-            background:qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 %1, stop:1 %2);
-            border:none; border-radius:9px; padding:6px 16px;
-            color:white; font-weight:700; font-size:12px; }
+        QPushButton { background:qlineargradient(x1:0,y1:0,x2:1,y2:1, stop:0 %1, stop:1 %2); border:none; border-radius:9px; padding:6px 16px; color:white; font-weight:700; font-size:12px; }
         QPushButton:hover { background:%1; }
         QPushButton:disabled { background:#252538; color:%3; }
     )").arg(C_ACCENT).arg(C_ACCENT2).arg(C_TEXT3));
     connect(m_visualStartBtn, &QPushButton::clicked, this, &MainWindow::onStartVisualSort);
     ctrlLay->addWidget(m_visualStartBtn);
 
-    // Pause
     m_visualPauseBtn = new QPushButton("⏸ Пауза", ctrlCard);
     m_visualPauseBtn->setEnabled(false);
     m_visualPauseBtn->setStyleSheet(QString(R"(
-        QPushButton { background:%1; border:1px solid %2; border-radius:9px;
-            padding:6px 14px; color:%3; font-weight:600; font-size:12px; }
+        QPushButton { background:%1; border:1px solid %2; border-radius:9px; padding:6px 14px; color:%3; font-weight:600; font-size:12px; }
         QPushButton:hover { border-color:%4; }
         QPushButton:disabled { color:%5; border-color:%6; }
     )").arg(C_BG_SIDEBAR).arg(C_BORDER).arg(C_WARNING).arg(C_WARNING).arg(C_TEXT3).arg(C_BORDER));
     connect(m_visualPauseBtn, &QPushButton::clicked, this, &MainWindow::onPauseResumeVisual);
     ctrlLay->addWidget(m_visualPauseBtn);
 
-    // Stop
     m_visualStopBtn = new QPushButton("⏹ Сброс", ctrlCard);
     m_visualStopBtn->setEnabled(false);
     m_visualStopBtn->setStyleSheet(QString(R"(
-        QPushButton { background:#221618; border:1px solid #5a2424; border-radius:9px;
-            padding:6px 14px; color:#f87171; font-weight:600; font-size:12px; }
+        QPushButton { background:#221618; border:1px solid #5a2424; border-radius:9px; padding:6px 14px; color:#f87171; font-weight:600; font-size:12px; }
         QPushButton:hover { background:#2d1c1c; border-color:%1; }
         QPushButton:disabled { background:#1a1a28; color:%2; border-color:%3; }
     )").arg(C_DANGER).arg(C_TEXT3).arg(C_BORDER));
@@ -841,7 +762,6 @@ void MainWindow::setupVisualizerPage() {
 
     lay->addWidget(ctrlCard);
 
-    // Status bar
     m_visualStatusLabel = new QLabel("Статус: Готов к запуску", page);
     m_visualStatusLabel->setStyleSheet(QString("color:%1; font-size:11px; padding:2px 4px;").arg(C_TEXT3));
     lay->addWidget(m_visualStatusLabel);
@@ -849,9 +769,86 @@ void MainWindow::setupVisualizerPage() {
     m_stackedWidget->addWidget(page);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Right configuration sidebar
-// ─────────────────────────────────────────────────────────────────────────────
+// Вкладка Описаний и Теории Справочника
+void MainWindow::setupDescriptionPage() {
+    QWidget* page = new QWidget(this);
+    page->setStyleSheet(QString("background:%1;").arg(C_BG_ROOT));
+
+    QVBoxLayout* mainLay = new QVBoxLayout(page);
+    mainLay->setContentsMargins(20, 16, 20, 16);
+    mainLay->setSpacing(16);
+
+    QLabel* secTitle = new QLabel("Теоретический справочник алгоритмов", page);
+    secTitle->setStyleSheet(QString("color:%1; font-size:16px; font-weight:700;").arg(C_TEXT1));
+    mainLay->addWidget(secTitle);
+
+    QScrollArea* scrollArea = new QScrollArea(page);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setStyleSheet("background:transparent; border:none;");
+
+    QWidget* container = new QWidget(scrollArea);
+    container->setStyleSheet("background:transparent;");
+    QVBoxLayout* containerLay = new QVBoxLayout(container);
+    containerLay->setContentsMargins(0, 0, 0, 0);
+    containerLay->setSpacing(12);
+
+    const QList<AlgDescData> descData = {
+        {"std::sort (STL IntroSort)", "O(n log n)", "O(n log n)", "O(n log n)", "O(log n)",
+         "Высокооптимизированный гибридный алгоритм сортировки, сочетающий быструю сортировку (QuickSort), пирамидальную сортировку (HeapSort) и сортировку вставками (InsertionSort). Автоматически переключается между ними для обеспечения максимальной производительности во всех случаях."},
+        {"QuickSort (Быстрая)", "O(n log n)", "O(n log n)", "O(n^2)", "O(log n)",
+         "Разделяй и властвуй: выбирается опорный элемент, относительно которого массив разбивается на меньшие и большие элементы, после чего рекурсивно сортируется. Очень быстра на практике, но деградирует на плохих опорных элементах."},
+        {"MergeSort (Слиянием)", "O(n log n)", "O(n log n)", "O(n log n)", "O(n)",
+         "Стабильный алгоритм сортировки. Делит массив пополам, рекурсивно сортирует каждую половину и затем сливает отсортированные части в один массив. Требует выделения дополнительной памяти, пропорциональной размеру массива."},
+        {"HeapSort (Пирамидальная)", "O(n log n)", "O(n log n)", "O(n log n)", "O(1)",
+         "Сортировка с использованием структуры данных двоичной кучи. Сначала строится куча, затем максимальные элементы последовательно извлекаются в конец массива. Не требует дополнительной памяти и гарантирует стабильное время выполнения."},
+        {"TimSort (Гибридная)", "O(n)", "O(n log n)", "O(n log n)", "O(n)",
+         "Гибридный стабильный алгоритм, разработанный Тимом Петерсом. Ищет в массиве упорядоченные подпоследовательности (раны) и сливает их, используя сортировку вставками для мелких участков. Стандарт в Python и Java."},
+        {"BubbleSort (Пузырёк)", "O(n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Простейший учебный алгоритм. Проходит по массиву множество раз, сравнивая соседние элементы и меняя их местами, если они расположены неверно. Тяжелые элементы 'опускаются' в конец, словно пузырьки."},
+        {"SelectionSort (Выбором)", "O(n^2)", "O(n^2)", "O(n^2)", "O(1)",
+         "Ищет наименьший элемент в неотсортированной части массива и меняет его местами с первым неотсортированным элементом. Обладает постоянным числом обменов, но не оптимален для больших объемов данных."},
+        {"InsertionSort (Вставками)", "O(n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Элементы массива просматриваются поочередно, и каждый новый элемент вставляется в подходящее место среди ранее отсортированных. Чрезвычайно эффективен на почти отсортированных данных и массивах малого размера."},
+        {"ShellSort (Шелла)", "O(n log n)", "O(n^1.3)", "O(n^2)", "O(1)",
+         "Модификация сортировки вставками, которая сравнивает элементы, стоящие на определенном расстоянии (шаге). Шаг постепенно уменьшается до единицы, что позволяет быстро переместить далеко стоящие элементы на свои места."},
+        {"CocktailSort (Шейкерная)", "O(n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Двунаправленная сортировка пузырьком. Совершает проходы по массиву поочередно слева направо и справа налево, ускоряя подъем 'легких' и опускание 'тяжелых' элементов в крайние позиции."},
+        {"GnomeSort (Гномья)", "O(n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Похожа на сортировку вставками, но нахождение правильного места элемента происходит путем последовательных обменов назад до тех пор, пока элемент не окажется больше предыдущего."},
+        {"CombSort (Расчёской)", "O(n log n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Усовершенствование пузырьковой сортировки. Вводит шаг сравнения, превосходящий единицу, который постепенно сокращается с коэффициентом усадки ~1.3, эффективно устраняя аномалии в начале и конце."},
+        {"RadixSortLSD (Поразрядная)", "O(nk)", "O(nk)", "O(nk)", "O(n+k)",
+         "Распределительный алгоритм без сравнения ключей. Группирует элементы по отдельным разрядам (байтам), начиная от младшего (LSD) к старшему. Эффективен для чисел и фиксированных битовых структур."},
+        {"CountingSort (Подсчётом)", "O(n+k)", "O(n+k)", "O(n+k)", "O(k)",
+         "Линейный алгоритм сортировки. Подсчитывает количество вхождений каждого уникального элемента в массиве и использует эти данные для вычисления позиций элементов в финальном массиве."},
+        {"BucketSort (Блочная)", "O(n+k)", "O(n+k)", "O(n^2)", "O(n)",
+         "Распределяет элементы входного массива по фиксированному числу блоков (корзин), затем сортирует каждую корзину отдельно (например, сортировкой вставками) и объединяет их в финальный список."},
+        {"PancakeSort (Блинная)", "O(n)", "O(n)", "O(n)", "O(1)",
+         "В этом алгоритме единственная разрешенная операция — разворот элементов префикса массива. Напоминает переворачивание стопки блинов лопаткой для перемещения максимальных блинов вниз."},
+        {"BogoSort (Случайная)", "O(n)", "O(n * n!)", "O(inf)", "O(1)",
+         "Один из самых неэффективных алгоритмов. Случайно перемешивает элементы массива и проверяет, не оказались ли они отсортированными. Имеет неограниченное худшее время выполнения."},
+        {"StoogeSort (Придурковатая)", "O(n^2.71)", "O(n^2.71)", "O(n^2.71)", "O(n)",
+         "Медленный рекурсивный алгоритм. Сравнивает первый и последний элементы, затем рекурсивно сортирует первые 2/3 массива, затем последние 2/3, и затем снова первые 2/3."},
+        {"OddEvenSort (Чет-Нечет)", "O(n)", "O(n^2)", "O(n^2)", "O(1)",
+         "Параллельная версия пузырьковой сортировки. Разбивает работу на две фазы: четную (сравнение пар с нечетным первым индексом) и нечетную (с четным первым индексом)."},
+        {"CycleSort (Циклическая)", "O(n^2)", "O(n^2)", "O(n^2)", "O(1)",
+         "Теоретически оптимальный алгоритм с точки зрения минимизации числа записей в память. Каждый элемент перемещается на свое конечное место ровно один раз через циклическое вычисление позиций."}
+    };
+
+    for (const auto& item : descData) {
+        DescCard* card = new DescCard(item, container);
+        containerLay->addWidget(card);
+        m_descCards.push_back(card);
+    }
+
+    containerLay->addStretch();
+    scrollArea->setWidget(container);
+    mainLay->addWidget(scrollArea, 1);
+
+    m_stackedWidget->addWidget(page);
+}
+
 void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     QWidget* sidebar = new QWidget(this);
     sidebar->setObjectName("rightSidebar");
@@ -862,28 +859,57 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     lay->setContentsMargins(14, 16, 14, 16);
     lay->setSpacing(12);
 
-    // ── Section: Algorithm selector ──────────────────────────────────────────
     auto sectionHeader = [&](const QString& title, const QString& iconEm) -> QLabel* {
         QLabel* l = new QLabel(iconEm + "  " + title, sidebar);
         l->setStyleSheet(QString("color:%1; font-size:12px; font-weight:700;").arg(C_TEXT1));
         return l;
     };
 
-    lay->addWidget(sectionHeader("Алгоритмы", "📋"));
+    lay->addWidget(sectionHeader("Алгоритмы сортировки", "📋"));
 
-    QLabel* algHint = new QLabel("Ctrl+Click для мультивыбора", sidebar);
-    algHint->setStyleSheet(QString("color:%1; font-size:10px;").arg(C_TEXT3));
-    lay->addWidget(algHint);
+    // Поле поиска плиток
+    m_sidebarSearch = new QLineEdit(sidebar);
+    m_sidebarSearch->setPlaceholderText("Фильтр сортировок...");
+    m_sidebarSearch->setStyleSheet(QString(
+        "QLineEdit { background:#141428; border:1px solid %1; border-radius:8px; padding:5px 10px; color:%2; }"
+        "QLineEdit:focus { border-color:%3; }"
+    ).arg(C_BORDER).arg(C_TEXT1).arg(C_ACCENT));
+    lay->addWidget(m_sidebarSearch);
 
-    m_algListWidget = new QListWidget(sidebar);
-    m_algListWidget->setSelectionMode(QAbstractItemView::MultiSelection);
-    m_algListWidget->setMinimumHeight(160);
-    m_algListWidget->setMaximumHeight(220);
-    lay->addWidget(m_algListWidget);
+    // Скролл-контейнер для плиток
+    QScrollArea* tileScroll = new QScrollArea(sidebar);
+    tileScroll->setWidgetResizable(true);
+    tileScroll->setFrameShape(QFrame::NoFrame);
+    tileScroll->setStyleSheet("background:transparent; border:none;");
+    tileScroll->setMinimumHeight(160);
+    tileScroll->setMaximumHeight(260);
+
+    QWidget* tileContainer = new QWidget(tileScroll);
+    tileContainer->setStyleSheet("background:transparent;");
+    QVBoxLayout* tileContainerLay = new QVBoxLayout(tileContainer);
+    tileContainerLay->setContentsMargins(0, 0, 0, 0);
+    tileContainerLay->setSpacing(6);
+
+    for (const auto& item : sidebarAlgs) {
+        AlgTile* tile = new AlgTile(item.name, item.desc, item.id, item.isGPU, tileContainer);
+        tileContainerLay->addWidget(tile);
+        m_tiles.push_back(tile);
+    }
+    tileContainerLay->addStretch();
+    tileScroll->setWidget(tileContainer);
+    lay->addWidget(tileScroll);
+
+    // Коннект фильтрации поиска в сайдбаре
+    connect(m_sidebarSearch, &QLineEdit::textChanged, this, [this](const QString& text) {
+        for (AlgTile* tile : m_tiles) {
+            bool matches = tile->titleLabel->text().contains(text, Qt::CaseInsensitive) ||
+                           tile->descLabel->text().contains(text, Qt::CaseInsensitive);
+            tile->setVisible(matches);
+        }
+    });
 
     lay->addWidget(hLine(sidebar));
 
-    // ── Section: Configuration ───────────────────────────────────────────────
     lay->addWidget(sectionHeader("Конфигурация", "⚙️"));
 
     QGridLayout* cfgGrid = new QGridLayout();
@@ -893,7 +919,6 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     auto cfgLabel = [&](const QString& t) {
         QLabel* l = new QLabel(t, sidebar);
         l->setStyleSheet(QString("color:%1; font-size:11px;").arg(C_TEXT2));
-        l->setWordWrap(true);
         return l;
     };
 
@@ -926,35 +951,29 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     cfgGrid->addWidget(m_runsSpin, 3, 1);
 
     lay->addLayout(cfgGrid);
-
     lay->addWidget(hLine(sidebar));
 
-    // ── GPU status chip ──────────────────────────────────────────────────────
+    // Информационный блок GPU
     QFrame* gpuChip = new QFrame(sidebar);
-    gpuChip->setStyleSheet(QString(
-        "QFrame { background:#0f1f18; border:1px solid #1a4030; border-radius:10px; }"
-    ));
+    gpuChip->setStyleSheet("QFrame { background:#0f1f18; border:1px solid #1a4030; border-radius:10px; }");
     QHBoxLayout* gpuLay = new QHBoxLayout(gpuChip);
     gpuLay->setContentsMargins(10, 8, 10, 8);
     gpuLay->setSpacing(8);
 
-    m_ledIndicator = new QWidget(gpuChip);
-    m_ledIndicator->setFixedSize(8, 8);
-    m_ledIndicator->setStyleSheet(QString(
-        "background:%1; border-radius:4px;"
-    ).arg(C_SUCCESS));
+    m_gpuLedIndicator = new QWidget(gpuChip);
+    m_gpuLedIndicator->setFixedSize(8, 8);
+    m_gpuLedIndicator->setStyleSheet(QString("background:%1; border-radius:4px;").arg(C_SUCCESS));
 
     QLabel* gpuLbl = new QLabel("GPU CUDA:", gpuChip);
     gpuLbl->setStyleSheet(QString("color:%1; font-size:11px; font-weight:600;").arg(C_TEXT2));
-    m_telemetryTextLabel = new QLabel("RTX 4090 · Online", gpuChip);
-    m_telemetryTextLabel->setStyleSheet(QString("color:%1; font-size:10px;").arg(C_SUCCESS));
+    m_sidebarGpuLabel = new QLabel("Поиск GPU...", gpuChip);
+    m_sidebarGpuLabel->setStyleSheet(QString("color:%1; font-size:10px;").arg(C_SUCCESS));
 
-    gpuLay->addWidget(m_ledIndicator);
+    gpuLay->addWidget(m_gpuLedIndicator);
     gpuLay->addWidget(gpuLbl);
-    gpuLay->addWidget(m_telemetryTextLabel, 1);
+    gpuLay->addWidget(m_sidebarGpuLabel, 1);
     lay->addWidget(gpuChip);
 
-    // ── Export buttons ───────────────────────────────────────────────────────
     lay->addWidget(sectionHeader("Экспорт", "📤"));
 
     QHBoxLayout* exportRow = new QHBoxLayout();
@@ -962,8 +981,7 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
 
     m_exportCsvBtn = new QPushButton("CSV", sidebar);
     m_exportCsvBtn->setStyleSheet(QString(R"(
-        QPushButton { background:%1; border:1px solid %2; border-radius:8px;
-            padding:6px 0; color:%3; font-weight:600; font-size:11px; }
+        QPushButton { background:%1; border:1px solid %2; border-radius:8px; padding:6px 0; color:%3; font-weight:600; font-size:11px; }
         QPushButton:hover { border-color:%4; color:%5; }
     )").arg(C_BG_CARD).arg(C_BORDER).arg(C_TEXT2).arg(C_ACCENT).arg(C_TEXT1));
     connect(m_exportCsvBtn, &QPushButton::clicked, this, &MainWindow::onExportCSV);
@@ -975,12 +993,10 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     exportRow->addWidget(m_exportPngBtn, 1);
 
     lay->addLayout(exportRow);
-
     lay->addStretch();
 
-    // ── Activity / recent results feed ───────────────────────────────────────
     lay->addWidget(hLine(sidebar));
-    lay->addWidget(sectionHeader("Activity", "📡"));
+    lay->addWidget(sectionHeader("Активность системы", "📡"));
 
     QScrollArea* actScroll = new QScrollArea(sidebar);
     actScroll->setWidgetResizable(true);
@@ -1019,8 +1035,8 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     };
 
     actItem("⚡", "SortBench готов к работе", "сейчас");
-    actItem("🎮", "RTX 4090 подключена", "1 мин назад");
-    actItem("📊", "Последний запуск: — ", "ожидание");
+    actItem("🎮", "Мониторинг шины PCIe активен", "сейчас");
+    actItem("📊", "Пределы массива установлены", "сейчас");
 
     actScroll->setWidget(actContent);
     lay->addWidget(actScroll);
@@ -1028,9 +1044,6 @@ void MainWindow::setupRightSidebar(QHBoxLayout* root) {
     root->addWidget(sidebar);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Charts setup
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::setupCharts() {
     m_chart = new QChart();
     m_chart->setTitle("");
@@ -1068,34 +1081,15 @@ void MainWindow::setupCharts() {
     m_chartView->setChart(m_chart);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Algorithm lists
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::loadAvailableAlgorithms() {
-    // Right sidebar list
-    const QStringList cpuItems = {
-        "CPU: std::sort", "CPU: QuickSort", "CPU: MergeSort", "CPU: HeapSort",
-        "CPU: TimSort", "CPU: BubbleSort", "CPU: SelectionSort", "CPU: InsertionSort",
-        "CPU: ShellSort", "CPU: CocktailSort", "CPU: GnomeSort", "CPU: CombSort",
-        "CPU: RadixSortLSD", "CPU: CountingSort", "CPU: BucketSort", "CPU: PancakeSort",
-        "CPU: BogoSort", "CPU: StoogeSort", "CPU: OddEvenSort", "CPU: CycleSort"
-    };
-    const QStringList gpuItems = {
-        "GPU: Bitonic Sort", "GPU: Radix Sort", "GPU: Odd-Even", "GPU: std::sort",
-        "GPU: QuickSort", "GPU: MergeSort", "GPU: HeapSort", "GPU: TimSort",
-        "GPU: BubbleSort", "GPU: SelectionSort"
-    };
+    // Дефолтный чекнутый выбор некоторых плиток
+    for (AlgTile* tile : m_tiles) {
+        if (tile->algId == "CPU_std::sort" || tile->algId == "CPU_QuickSort" ||
+            tile->algId == "GPU_Bitonic" || tile->algId == "GPU_Radix") {
+            tile->checkbox->setChecked(true);
+        }
+    }
 
-    for (const auto& s : cpuItems) m_algListWidget->addItem(s);
-    for (const auto& s : gpuItems) m_algListWidget->addItem(s);
-
-    // Default selection
-    m_algListWidget->item(0)->setSelected(true);   // std::sort
-    m_algListWidget->item(1)->setSelected(true);   // QuickSort
-    m_algListWidget->item(20)->setSelected(true);  // GPU Bitonic
-    m_algListWidget->item(21)->setSelected(true);  // GPU Radix
-
-    // Visualiser combo
     m_visualAlgCombo->clear();
     const QList<QPair<QString,QString>> vItems = {
         {"QuickSort",          "CPU_QuickSort"},
@@ -1119,40 +1113,56 @@ void MainWindow::loadAvailableAlgorithms() {
         {"CycleSort",          "CPU_CycleSort"},
         {"std::sort (STL)",    "CPU_stdSort"},
     };
-    for (const auto& p : vItems)
+    for (const auto& p : vItems) {
         m_visualAlgCombo->addItem(p.first, p.second);
+    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Page switching
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::switchToBenchmarkPage() {
     m_stackedWidget->setCurrentIndex(0);
-    m_pageTitle->setText("Dashboard");
-    m_pageSubtitle->setText("Benchmark Analytics");
-    if (m_navBenchBtn) { m_navBenchBtn->setChecked(true); }
-    if (m_navVisualBtn) { m_navVisualBtn->setChecked(false); }
+    m_pageTitle->setText("Панель управления");
+    m_pageSubtitle->setText("Сравнительный бенчмарк алгоритмов");
+    m_navBenchBtn->setChecked(true);
+    m_navVisualBtn->setChecked(false);
+    m_navDescBtn->setChecked(false);
 }
 
 void MainWindow::switchToVisualizerPage() {
     m_stackedWidget->setCurrentIndex(1);
-    m_pageTitle->setText("Visualiser");
-    m_pageSubtitle->setText("Interactive Sort Simulation");
-    if (m_navBenchBtn) { m_navBenchBtn->setChecked(false); }
-    if (m_navVisualBtn) { m_navVisualBtn->setChecked(true); }
+    m_pageTitle->setText("Визуализатор");
+    m_pageSubtitle->setText("Интерактивный симулятор работы алгоритмов");
+    m_navBenchBtn->setChecked(false);
+    m_navVisualBtn->setChecked(true);
+    m_navDescBtn->setChecked(false);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Benchmark logic (same as before)
-// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::switchToDescriptionPage() {
+    m_stackedWidget->setCurrentIndex(2);
+    m_pageTitle->setText("Справочник");
+    m_pageSubtitle->setText("Теоретическое описание алгоритмов сортировки");
+    m_navBenchBtn->setChecked(false);
+    m_navVisualBtn->setChecked(false);
+    m_navDescBtn->setChecked(true);
+}
+
+// Получить активные плитки
+std::vector<QString> MainWindow::getSelectedAlgorithms() {
+    std::vector<QString> list;
+    for (AlgTile* tile : m_tiles) {
+        if (tile->checkbox->isChecked()) {
+            list.push_back(tile->algId);
+        }
+    }
+    return list;
+}
+
 void MainWindow::onStartBenchmark() {
     m_accumulatedResults.clear();
     m_statsTable->setRowCount(0);
 
-    QList<QListWidgetItem*> items = m_algListWidget->selectedItems();
-    if (items.isEmpty()) {
-        QMessageBox::warning(this, "Выбор алгоритма",
-                             "Выберите хотя бы один алгоритм в правой панели.");
+    std::vector<QString> selected = getSelectedAlgorithms();
+    if (selected.empty()) {
+        QMessageBox::warning(this, "Выбор алгоритма", "Выберите хотя бы одну сортировку-плитку в боковой панели справа.");
         return;
     }
 
@@ -1167,38 +1177,8 @@ void MainWindow::onStartBenchmark() {
     cfg.isDoublePrecision = m_dataTypeCombo->currentIndex() > 0;
     cfg.gpuConnected     = m_gpuConnected;
 
-    for (auto* item : std::as_const(items)) {
-        const QString t = item->text();
-        if (t.contains("CPU: std::sort"))     cfg.selectedAlgorithms.push_back("CPU_std::sort");
-        else if (t.contains("CPU: QuickSort")) cfg.selectedAlgorithms.push_back("CPU_QuickSort");
-        else if (t.contains("CPU: MergeSort")) cfg.selectedAlgorithms.push_back("CPU_MergeSort");
-        else if (t.contains("CPU: HeapSort"))  cfg.selectedAlgorithms.push_back("CPU_HeapSort");
-        else if (t.contains("CPU: TimSort"))   cfg.selectedAlgorithms.push_back("CPU_TimSort");
-        else if (t.contains("CPU: BubbleSort")) cfg.selectedAlgorithms.push_back("CPU_BubbleSort");
-        else if (t.contains("CPU: SelectionSort")) cfg.selectedAlgorithms.push_back("CPU_SelectionSort");
-        else if (t.contains("CPU: InsertionSort"))  cfg.selectedAlgorithms.push_back("CPU_InsertionSort");
-        else if (t.contains("CPU: ShellSort"))   cfg.selectedAlgorithms.push_back("CPU_ShellSort");
-        else if (t.contains("CPU: CocktailSort")) cfg.selectedAlgorithms.push_back("CPU_CocktailSort");
-        else if (t.contains("CPU: GnomeSort"))    cfg.selectedAlgorithms.push_back("CPU_GnomeSort");
-        else if (t.contains("CPU: CombSort"))     cfg.selectedAlgorithms.push_back("CPU_CombSort");
-        else if (t.contains("CPU: RadixSortLSD")) cfg.selectedAlgorithms.push_back("CPU_RadixSortLSD");
-        else if (t.contains("CPU: CountingSort")) cfg.selectedAlgorithms.push_back("CPU_CountingSort");
-        else if (t.contains("CPU: BucketSort"))   cfg.selectedAlgorithms.push_back("CPU_BucketSort");
-        else if (t.contains("CPU: PancakeSort"))  cfg.selectedAlgorithms.push_back("CPU_PancakeSort");
-        else if (t.contains("CPU: BogoSort"))     cfg.selectedAlgorithms.push_back("CPU_BogoSort");
-        else if (t.contains("CPU: StoogeSort"))   cfg.selectedAlgorithms.push_back("CPU_StoogeSort");
-        else if (t.contains("CPU: OddEvenSort"))  cfg.selectedAlgorithms.push_back("CPU_OddEvenSort");
-        else if (t.contains("CPU: CycleSort"))    cfg.selectedAlgorithms.push_back("CPU_CycleSort");
-        else if (t.contains("GPU: Bitonic"))  cfg.selectedAlgorithms.push_back("GPU_Bitonic");
-        else if (t.contains("GPU: Radix"))    cfg.selectedAlgorithms.push_back("GPU_Radix");
-        else if (t.contains("GPU: Odd-Even")) cfg.selectedAlgorithms.push_back("GPU_OddEven");
-        else if (t.contains("GPU: std::sort")) cfg.selectedAlgorithms.push_back("GPU_StdSort");
-        else if (t.contains("GPU: QuickSort")) cfg.selectedAlgorithms.push_back("GPU_QuickSort");
-        else if (t.contains("GPU: MergeSort")) cfg.selectedAlgorithms.push_back("GPU_MergeSort");
-        else if (t.contains("GPU: HeapSort"))  cfg.selectedAlgorithms.push_back("GPU_HeapSort");
-        else if (t.contains("GPU: TimSort"))   cfg.selectedAlgorithms.push_back("GPU_TimSort");
-        else if (t.contains("GPU: BubbleSort")) cfg.selectedAlgorithms.push_back("GPU_BubbleSort");
-        else if (t.contains("GPU: SelectionSort")) cfg.selectedAlgorithms.push_back("GPU_SelectionSort");
+    for (const auto& algId : selected) {
+        cfg.selectedAlgorithms.push_back(algId);
     }
 
     m_benchRunner->setConfig(cfg);
@@ -1208,8 +1188,9 @@ void MainWindow::onStartBenchmark() {
 }
 
 void MainWindow::onStopBenchmark() {
-    if (m_benchRunner && m_benchRunner->isRunning())
+    if (m_benchRunner && m_benchRunner->isRunning()) {
         m_benchRunner->requestStop();
+    }
 }
 
 void MainWindow::onBenchmarkProgress(int pct) {
@@ -1229,8 +1210,7 @@ void MainWindow::onAlgorithmCompleted(const Benchmark::StatResults& s) {
     };
 
     m_statsTable->setItem(row, 0, cell(s.algorithmName));
-    m_statsTable->setItem(row, 1, cell(s.isGPU ? "🚀 GPU" : "💻 CPU",
-                                       s.isGPU ? QColor(C_ACCENT) : QColor(C_BLUE)));
+    m_statsTable->setItem(row, 1, cell(s.isGPU ? "🚀 GPU" : "💻 CPU", s.isGPU ? QColor(C_ACCENT) : QColor(C_BLUE)));
     m_statsTable->setItem(row, 2, cell(QString::number(s.arraySize)));
 
     if (s.success) {
@@ -1238,12 +1218,12 @@ void MainWindow::onAlgorithmCompleted(const Benchmark::StatResults& s) {
         m_statsTable->setItem(row, 4, cell(QString::number(s.maxTimeMs, 'f', 4)));
         m_statsTable->setItem(row, 5, cell(QString::number(s.avgTimeMs, 'f', 4)));
         m_statsTable->setItem(row, 6, cell(QString::number(s.medianTimeMs, 'f', 4)));
-        m_statsTable->setItem(row, 7, cell(
-            s.isGPU ? QString::number(s.avgKernelTimeMs, 'f', 3) + " ms" : "—"));
+        m_statsTable->setItem(row, 7, cell(s.isGPU ? QString::number(s.avgKernelTimeMs, 'f', 3) + " ms" : "—"));
         m_statsTable->setItem(row, 8, cell("✅ OK", QColor(C_SUCCESS)));
     } else {
-        for (int c = 3; c <= 7; ++c)
+        for (int c = 3; c <= 7; ++c) {
             m_statsTable->setItem(row, c, cell("—", QColor(C_TEXT3)));
+        }
         m_statsTable->setItem(row, 8, cell("❌ " + s.errorMsg.left(40), QColor(C_DANGER)));
     }
 
@@ -1257,9 +1237,6 @@ void MainWindow::onBenchmarkFinished() {
     m_benchProgress->setValue(100);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Chart / metric update
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::updateCharts() {
     m_barSeries->clear();
 
@@ -1276,7 +1253,6 @@ void MainWindow::updateCharts() {
 
     for (const auto& r : m_accumulatedResults) {
         if (!r.success) continue;
-        // Shorten label
         QString lbl = r.algorithmName;
         lbl.remove("CPU_").remove("GPU_").replace("Sort","").replace("sort","");
         cats << lbl;
@@ -1305,23 +1281,24 @@ void MainWindow::updateMetricCards() {
         if (r.isGPU  && r.avgTimeMs < bestGpu) bestGpu = r.avgTimeMs;
     }
 
-    if (bestCpu < 1e18)
+    if (bestCpu < 1e18) {
         m_metricBestCpu->setText(QString::number(bestCpu, 'f', 3) + " ms");
-    if (bestGpu < 1e18)
+    }
+    if (bestGpu < 1e18) {
         m_metricBestGpu->setText(QString::number(bestGpu, 'f', 3) + " ms");
-    if (bestCpu < 1e18 && bestGpu < 1e18 && bestGpu > 0)
+    }
+    if (bestCpu < 1e18 && bestGpu < 1e18 && bestGpu > 0) {
         m_metricSpeedup->setText(QString::number(bestCpu / bestGpu, 'f', 1) + "×");
+    }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Visualiser controls
-// ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::onGenerateVisualArray() {
     onStopVisual();
     int size = m_visualSizeSpin->value();
     m_visualData.resize(size);
-    for (int i = 0; i < size; ++i)
+    for (int i = 0; i < size; ++i) {
         m_visualData[i] = QRandomGenerator::global()->generateDouble() * 500.0 + 10.0;
+    }
     m_visualizer->updateData(m_visualData);
     m_visualStatusLabel->setText("Статус: Массив инициализирован.");
 }
@@ -1384,7 +1361,7 @@ void MainWindow::onStartVisualSort() {
         else if (algKey=="CPU_CycleSort")     CPU::cycleSort(arr, ctx);
 
         QMetaObject::invokeMethod(this, [this]() {
-            m_visualStatusLabel->setText("Статус: ✅ Сортировка завершена!");
+            m_visualStatusLabel->setText("Статус: Сортировка завершена!");
             onStopVisual();
         }, Qt::QueuedConnection);
     });
@@ -1426,39 +1403,45 @@ void MainWindow::onVisualStep(const std::vector<double>& arr, int a1, int a2, in
     m_visualizer->updateData(arr, a1, a2, piv);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  GPU toggle
-// ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::onToggleGpu() {
-    m_gpuConnected = !m_gpuConnected;
-    if (m_gpuConnected) {
-        m_ledIndicator->setStyleSheet(
-            QString("background:%1; border-radius:4px;").arg(C_SUCCESS));
-        m_telemetryTextLabel->setText("RTX 4090 · Online");
-        m_telemetryTextLabel->setStyleSheet(
-            QString("color:%1; font-size:10px; background:transparent;").arg(C_SUCCESS));
-        m_toggleGpuBtn->setToolTip("GPU подключен (нажмите для отключения)");
+void MainWindow::updateSystemTelemetry() {
+    QString cpu = getRealCpuName();
+    QString gpu = getRealGpuName();
+    bool hasGpu = (gpu != "GPU Offline / No CUDA Device");
+
+    m_topCpuLabel->setText(cpu);
+    m_topGpuLabel->setText(gpu + (hasGpu ? " · Online" : ""));
+    m_sidebarGpuLabel->setText(gpu);
+
+    if (hasGpu) {
+        m_gpuLedIndicator->setStyleSheet("background: #10b981; border-radius: 4px;");
+        m_sidebarGpuLabel->setStyleSheet("color: #10b981; font-size: 10px; background: transparent;");
     } else {
-        m_ledIndicator->setStyleSheet(
-            QString("background:%1; border-radius:4px;").arg(C_DANGER));
-        m_telemetryTextLabel->setText("GPU OFFLINE");
-        m_telemetryTextLabel->setStyleSheet(
-            QString("color:%1; font-size:10px; background:transparent;").arg(C_DANGER));
-        m_toggleGpuBtn->setToolTip("GPU отключен (нажмите для подключения)");
+        m_gpuLedIndicator->setStyleSheet("background: #ef4444; border-radius: 4px;");
+        m_sidebarGpuLabel->setStyleSheet("color: #ef4444; font-size: 10px; background: transparent;");
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Export
-// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::onToggleGpu() {
+    m_gpuConnected = !m_gpuConnected;
+    if (m_gpuConnected) {
+        updateSystemTelemetry();
+        m_toggleGpuBtn->setToolTip("GPU активен (кликните для отключения)");
+    } else {
+        m_gpuLedIndicator->setStyleSheet("background: #ef4444; border-radius: 4px;");
+        m_sidebarGpuLabel->setText("GPU OFFLINE (SIM)");
+        m_sidebarGpuLabel->setStyleSheet("color: #ef4444; font-size: 10px; background: transparent;");
+        m_topGpuLabel->setText("GPU SIMULATION OFFLINE");
+        m_topGpuLabel->setStyleSheet(QString("color:%1; font-size:10px; background:transparent;").arg(C_DANGER));
+        m_toggleGpuBtn->setToolTip("GPU отключен вручную (кликните для подключения)");
+    }
+}
+
 void MainWindow::onExportCSV() {
     if (m_accumulatedResults.empty()) {
-        QMessageBox::information(this, "Экспорт CSV",
-            "Нет данных для экспорта. Запустите хотя бы один тест.");
+        QMessageBox::information(this, "Экспорт CSV", "Нет данных для экспорта. Запустите хотя бы один тест.");
         return;
     }
-    QString fn = QFileDialog::getSaveFileName(
-        this, "Сохранить CSV", "", "CSV (*.csv);;All (*)");
+    QString fn = QFileDialog::getSaveFileName(this, "Сохранить CSV", "", "CSV (*.csv);;All (*)");
     if (fn.isEmpty()) return;
 
     QFile f(fn);
@@ -1467,8 +1450,7 @@ void MainWindow::onExportCSV() {
         return;
     }
     QTextStream out(&f);
-    out << "Algorithm;Device;N;Min_ms;Max_ms;Avg_ms;Median_ms;Variance_ms;"
-           "Upload_ms;Kernel_ms;Download_ms;Status\n";
+    out << "Algorithm;Device;N;Min_ms;Max_ms;Avg_ms;Median_ms;Variance_ms;Upload_ms;Kernel_ms;Download_ms;Status\n";
     for (const auto& r : m_accumulatedResults) {
         out << r.algorithmName << ";" << (r.isGPU?"GPU":"CPU") << ";"
             << r.arraySize << ";" << r.minTimeMs << ";" << r.maxTimeMs << ";"
@@ -1477,23 +1459,21 @@ void MainWindow::onExportCSV() {
             << (r.success?"OK":"Error") << "\n";
     }
     f.close();
-    QMessageBox::information(this, "Экспорт CSV",
-        "Результаты сохранены:\n" + fn);
+    QMessageBox::information(this, "Экспорт CSV", "Результаты сохранены:\n" + fn);
 }
 
 void MainWindow::onExportPNG() {
     if (m_accumulatedResults.empty()) {
-        QMessageBox::information(this, "Экспорт PNG",
-            "Нет данных для экспорта графика.");
+        QMessageBox::information(this, "Экспорт PNG", "Нет данных для экспорта графика.");
         return;
     }
-    QString fn = QFileDialog::getSaveFileName(
-        this, "Сохранить PNG", "", "PNG (*.png);;All (*)");
+    QString fn = QFileDialog::getSaveFileName(this, "Сохранить PNG", "", "PNG (*.png);;All (*)");
     if (fn.isEmpty()) return;
 
     QPixmap px = m_chartView->grab();
-    if (px.save(fn, "PNG"))
+    if (px.save(fn, "PNG")) {
         QMessageBox::information(this, "Экспорт PNG", "График сохранён:\n" + fn);
-    else
+    } else {
         QMessageBox::critical(this, "Ошибка", "Не удалось записать PNG.");
+    }
 }

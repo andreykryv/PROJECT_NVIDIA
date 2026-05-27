@@ -1,10 +1,7 @@
 /**
  * @file mainwindow.h
  * @brief Главное окно интерфейса SortBench — Teamify Dashboard Style.
- * Трёхколоночный макет: левый сайдбар (иконки навигации),
- * центральный контент (график + карточки метрик + таблица / визуализатор),
- * правый сайдбар (конфигурация + алгоритмы + запуск).
- *
+ * 
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -19,7 +16,6 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QPushButton>
-#include <QTabWidget>
 #include <QLabel>
 #include <QToolButton>
 #include <QLineEdit>
@@ -30,13 +26,48 @@
 #include <QBarCategoryAxis>
 #include <QValueAxis>
 #include <QListWidget>
-#include <QListWidgetItem>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <vector>
 
 #include "sorting_visualizer.h"
 #include "benchmark_runner.h"
+
+// Интерактивная плитка выбора алгоритма
+class AlgTile : public QFrame {
+    Q_OBJECT
+public:
+    QCheckBox* checkbox = nullptr;
+    QLabel* titleLabel = nullptr;
+    QLabel* descLabel = nullptr;
+    QString algId;
+    bool isGPU;
+
+    AlgTile(const QString& name, const QString& shortDesc, const QString& id, bool gpu, QWidget* parent = nullptr);
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override;
+};
+
+// Структура метаданных описания алгоритма
+struct AlgDescData {
+    QString name;
+    QString best;
+    QString avg;
+    QString worst;
+    QString space;
+    QString description;
+};
+
+// Плитка справочника теории алгоритмов
+class DescCard : public QFrame {
+    Q_OBJECT
+public:
+    QLabel* titleLabel = nullptr;
+    QLabel* descLabel = nullptr;
+    DescCard(const AlgDescData& data, QWidget* parent = nullptr);
+};
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -65,40 +96,36 @@ private slots:
 
     void switchToBenchmarkPage();
     void switchToVisualizerPage();
+    void switchToDescriptionPage();
 
 private:
-    // ── UI Build Helpers ──────────────────────────────────────────────────────
     void setupUI();
     void setupLeftSidebar(QHBoxLayout* root);
     void setupTopBar(QVBoxLayout* parent);
     void setupBenchmarkPage();
     void setupVisualizerPage();
+    void setupDescriptionPage();
     void setupRightSidebar(QHBoxLayout* parent);
     void setupCharts();
     void loadAvailableAlgorithms();
     void applyMasterStylesheet();
 
-    // ── Update helpers ────────────────────────────────────────────────────────
     void updateCharts();
     void updateMetricCards();
+    void updateSystemTelemetry();
+    std::vector<QString> getSelectedAlgorithms();
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Navigation
-    // ═══════════════════════════════════════════════════════════════════════
+    // Навигация
     QToolButton* m_navBenchBtn   = nullptr;
     QToolButton* m_navVisualBtn  = nullptr;
+    QToolButton* m_navDescBtn    = nullptr;
     QToolButton* m_navExportBtn  = nullptr;
     QLabel*      m_pageTitle     = nullptr;
     QLabel*      m_pageSubtitle  = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Page switcher
-    // ═══════════════════════════════════════════════════════════════════════
     QStackedWidget* m_stackedWidget = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Benchmark page widgets
-    // ═══════════════════════════════════════════════════════════════════════
+    // Вкладка Аналитики
     QChartView*         m_chartView   = nullptr;
     QChart*             m_chart       = nullptr;
     QBarSeries*         m_barSeries   = nullptr;
@@ -106,15 +133,12 @@ private:
     QValueAxis*         m_axisY       = nullptr;
     QTableWidget*       m_statsTable  = nullptr;
 
-    // Metric cards (live update)
-    QLabel* m_metricAlgCount  = nullptr;   // Total algorithms tested
-    QLabel* m_metricBestCpu   = nullptr;   // Best CPU time
-    QLabel* m_metricBestGpu   = nullptr;   // Best GPU time
-    QLabel* m_metricSpeedup   = nullptr;   // GPU speedup factor
+    QLabel* m_metricAlgCount  = nullptr;
+    QLabel* m_metricBestCpu   = nullptr;
+    QLabel* m_metricBestGpu   = nullptr;
+    QLabel* m_metricSpeedup   = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Visualiser page widgets
-    // ═══════════════════════════════════════════════════════════════════════
+    // Вкладка Визуализации
     SortingVisualizer* m_visualizer      = nullptr;
     QComboBox*         m_visualAlgCombo  = nullptr;
     QSpinBox*          m_visualSizeSpin  = nullptr;
@@ -125,10 +149,8 @@ private:
     QSlider*           m_visualSpeedSlider = nullptr;
     QLabel*            m_visualStatusLabel = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Right sidebar — configuration
-    // ═══════════════════════════════════════════════════════════════════════
-    QListWidget*   m_algListWidget  = nullptr;
+    // Элементы конфигурации правого сайдбара
+    QLineEdit*     m_sidebarSearch  = nullptr;
     QSpinBox*      m_arraySizeSpin  = nullptr;
     QComboBox*     m_distCombo      = nullptr;
     QComboBox*     m_dataTypeCombo  = nullptr;
@@ -139,16 +161,17 @@ private:
     QPushButton*   m_exportPngBtn   = nullptr;
     QProgressBar*  m_benchProgress  = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Top bar / GPU telemetry
-    // ═══════════════════════════════════════════════════════════════════════
-    QLabel*      m_telemetryTextLabel = nullptr;
-    QPushButton* m_toggleGpuBtn       = nullptr;
-    QWidget*     m_ledIndicator       = nullptr;
+    // Верхний поиск
+    QLineEdit*     m_topSearchEdit  = nullptr;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  Runtime state
-    // ═══════════════════════════════════════════════════════════════════════
+    // Системная телеметрия
+    QLabel*      m_topCpuLabel      = nullptr;
+    QLabel*      m_topGpuLabel      = nullptr;
+    QLabel*      m_sidebarGpuLabel  = nullptr;
+    QPushButton* m_toggleGpuBtn     = nullptr;
+    QWidget*     m_gpuLedIndicator  = nullptr;
+
+    // Данные рантайма
     BenchmarkRunner*              m_benchRunner    = nullptr;
     std::vector<double>           m_visualData;
     std::atomic<bool>             m_stopVisualRequested;
@@ -157,4 +180,8 @@ private:
     QThread*                      m_visualSortThread = nullptr;
     std::vector<Benchmark::StatResults> m_accumulatedResults;
     bool                          m_gpuConnected = true;
+
+    // Контейнеры динамических карточек
+    std::vector<AlgTile*>   m_tiles;
+    std::vector<DescCard*>  m_descCards;
 };
